@@ -24,10 +24,15 @@ func parseString(addr string, ipAddr *IPAddr) error {
 	if n != 5 {
 		return fmt.Errorf("Input string \"%s\" wasn't correct format", addr)
 	}
+	ipInt64, n0 := binary.Uvarint(ipAddr.IP[:])
+	if n0 <= 0 {
+		return fmt.Errorf("Error in processing IP bytes")
+	}
+	binary.BigEndian.PutUint32(ipAddr.IP[:], uint32(ipInt64))
 	return nil
 }
 
-func ParseString(addr string) (*IPAddr, error) {
+func ParseAddrString(addr string) (*IPAddr, error) {
 	ipAddr := new(IPAddr)
 	err := parseString(addr, ipAddr)
 	return ipAddr, err
@@ -75,7 +80,30 @@ func (ipAddr IPAddr) String() string {
 		ipAddr.Port)
 }
 
-func Test1() {
+func LocalIPAtPort(port uint16) (*IPAddr, error) {
+	ipString, err0 := getLocalIP()
+	if err0 != nil {
+		return nil, err0
+	}
+	addrString := fmt.Sprintf("%s:%d", ipString, port)
+	addr, err1 := ParseAddrString(addrString)
+	if err1 != nil {
+		return nil, err1
+	}
+	return addr, nil
+}
+
+func (ipAddr *IPAddr) SetToLocalIP() error {
+	ipString, err0 := getLocalIP()
+	if err0 != nil {
+		return err0
+	}
+	addrString := fmt.Sprintf("%s:%d", ipString, ipAddr.Port)
+	err1 := ipAddr.ParseString(addrString)
+	return err1 // Could be nil
+}
+
+func test1() {
 	addr, err := ParseString("127.0.0.1:80")
 	for i := 0; i < 10; i++ {
 		if err != nil {
@@ -102,7 +130,7 @@ func Test1() {
 	}
 }
 
-func Test2() {
+func test2() {
 	addr, err := ParseString("127.0.0.1:80")
 	if err != nil {
 		fmt.Println(err)
@@ -119,6 +147,6 @@ func Test2() {
 
 /*
 func main() {
-	Test2()
+	test2()
 }
 */
