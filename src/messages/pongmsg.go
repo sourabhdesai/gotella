@@ -7,7 +7,7 @@ import (
 )
 
 type PongMsg struct {
-	addr      IPAddr
+	Addr      IPAddr
 	NumShared uint32
 	NumKB     uint32
 }
@@ -16,7 +16,7 @@ func parsePongBytes(buffer []byte, pong *PongMsg) error {
 	if len(buffer) != 14 {
 		return fmt.Errorf("Expected buffer of length 14. Received buffer of length %d", len(buffer))
 	}
-	err0 := pong.addr.ParseBytes(buffer[:6])
+	err0 := pong.Addr.ParseBytes(buffer[:6])
 	if err0 != nil {
 		return err0
 	}
@@ -38,7 +38,7 @@ func (pong *PongMsg) ParseBytes(buffer []byte) error {
 
 func (pong *PongMsg) ToBytes() []byte {
 	var buffer [14]byte
-	addrBytes := pong.addr.ToBytes() // Always of length 6
+	addrBytes := pong.Addr.ToBytes() // Always of length 6
 	copy(buffer[:6], addrBytes)
 	binary.LittleEndian.PutUint32(buffer[6:10], pong.NumShared)
 	binary.LittleEndian.PutUint32(buffer[10:], pong.NumKB)
