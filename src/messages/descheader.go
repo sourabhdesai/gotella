@@ -5,6 +5,7 @@ package messages
 
 import (
 	"../ipaddr"
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -44,10 +45,11 @@ func parseHeaderBytes(rawHeader []byte, descHeader *DescHeader) error {
 		return fmt.Errorf("input must be of length 23. Actual length == %d", len(rawHeader))
 	}
 	// Copy contents into member variables
-	copy(descHeader.DescID[:], rawHeader[:16])
-	descHeader.PayloadDesc = rawHeader[16]
-	descHeader.TTL = rawHeader[17]
-	descHeader.Hops = rawHeader[18]
+	var descIDString string = readStringLE(rawHeader[:16])
+	descHeader.DescID = []byte(string)
+	descHeader.PayloadDesc = readByteLE(rawHeader[16:17])
+	descHeader.TTL = readByteLE(rawHeader[17:18])
+	descHeader.Hops = readByteLE(rawHeader[18:19])
 	descHeader.PayloadLen = binary.LittleEndian.Uint32(rawHeader[19:])
 }
 
@@ -63,11 +65,14 @@ func (descHeader *DescHeader) ParseHeaderBytes(rawHeader []byte) error {
 }
 
 func (descHeader *DescHeader) ToBytes() []byte {
-	var buffer [23]byte
-	copy(buffer[:16], descHeader.DescID[:])
-	buffer[16] = descHeader.PayloadDesc
-	buffer[17] = descHeader.TTL
-	buffer[18] = descHeader.Hops
-	binary.LittleEndian.PutUint32(buffer[19:], descHeader.PayloadLen)
-	return buffer[:]
+	var b bytes.Buffer
+	binary.Write(b, binary.LittleEndian, descHeader.DescID[:])
+	binary.Write(b, binary.LittleEndian, descHeader.PayloadDesc) // buffer[16] = descHeader.PayloadDesc
+	binary.Write(b, binary.LittleEndian, descHeader.TTL)         // buffer[17] = descHeader.TTL
+	binary.Write(b, binary.LittleEndian, descHeader.Hops)        // buffer[18] = descHeader.Hops
+	binary.Write(b, binary.LittleEndian, descHeader.PayloadLen)  // binary.LittleEndian.PutUint32(buffer[19:], descHeader.PayloadLen)
+	buffer := b.Bytes()
+	if l := len(buffer); l != 23 {
+		fmt.Println(fmt.Errorf("ToBytes() failed. Buffer was of length %d", l)) // Debug statement...should never occurr
+	}
 }

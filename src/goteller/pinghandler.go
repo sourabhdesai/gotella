@@ -8,10 +8,10 @@ import (
 
 func (teller *GoTeller) onPing(descHeader *DescHeader, from IPAddr) {
 	pong := PongMsg{NumShared: teller.NumShared, NumKB: teller.NumKB}
-	pong.Addr.Port = teller.Port
+	pong.Addr = teller.addr
 	pongBuffer := pong.ToBytes()
 	pongHeader := DescHeader{
-		DescID:      descHeader.DescID,
+		DescID:      descHeader.DescID, // Very Important! Pong Must be same ID as Ping
 		PayloadDesc: messages.PONG,
 		TTL:         descHeader.Hops,
 		PayloadLen:  len(pongBuffer),
@@ -23,5 +23,20 @@ func (teller *GoTeller) onPing(descHeader *DescHeader, from IPAddr) {
 	descHeader.Hops++
 	if descHeader.TTL > 0 {
 		teller.floodToNeighbors(descHeader.ToBytes(), from)
+		teller.pingMapMutex.Lock()
+		teller.savedPings[descHeader.DescID] = from // Save in saved Pings
+		teller.pingMapMutex.Unlock()
 	}
+}
+
+func (teller *GoTeller) sendPings(ttl byte) {
+	header := DescHeader{
+		DescID:      teller.newID(),
+		PayloadDesc: messages.PING,
+		TTL:         ttl,
+		Hops:        0,
+		PayloadLen:  0x0000000000,
+	}
+	msgBuffer := header.ToBytes()
+	teller.floodToNeighbors(msgBuffer, teller.Addr)
 }

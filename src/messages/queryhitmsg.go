@@ -17,7 +17,7 @@ type QueryHitMsg struct {
 	Addr      IPAddr
 	Speed     uint32
 	ResultSet []HitResult
-	ServantID string
+	ServantID [16]byte
 }
 
 func findDoubleNullByte(buffer []byte) int {
@@ -40,8 +40,9 @@ func parseHitResultBytes(buffer []byte, hit *HitResult) error {
 	if nullIdx == -1 {
 		return fmt.Errorf("Couldn't find double null character in input buffer")
 	}
-	hit.Filename = string(filenameBuffer[:nullIdx])
-	return nil
+	var err error = nil
+	hit.Filename, err = readStringLE(filenameBuffer[:nullIdx])
+	return err // err might be nil
 }
 
 func ParseHitResultBytes(buffer []byte) (*HitResult, error) {
@@ -64,7 +65,7 @@ func (hit *HitResult) ToBytes() []byte {
 	buffer := make([]byte, bufferLen)
 	binary.LittleEndian.PutUint32(buffer[:4], hit.FileIndex)
 	binary.LittleEndian.PutUint32(buffer[4:8], hit.FileSize)
-	copy(buffer[:bufferLen-2], hit.Filename)
+	err := writeStringLE(buffer[:bufferLen-2], hit.Filename)
 	buffer[bufferLen-2] = 0x00
 	buffer[bufferLen-1] = 0x00
 	return buffer
@@ -94,8 +95,9 @@ func parseQueryHitBytes(buffer []byte, queryHit *QueryHitMsg) error {
 		append(queryHit.ResultSet, *hit)
 		hitIdx += hit.ByteLength()
 	}
-	queryHit.ServantID = string(buffer[hitIdx:])
-	return nil
+	var err1 error = nil
+	queryHit.ServantID, err1 = readStringLE(buffer[hitIdx:])
+	return er1r // err1 might be nil
 }
 
 func ParseQueryHitBytes(buffer []byte) (*QueryHitMsg, error) {
@@ -130,6 +132,6 @@ func (queryHit *QueryHitMsg) ToBytes() []byte {
 		copy(buffer[hitIdx:], hitBytes)
 		hitIdx += len(hitBytes)
 	}
-	copy(buffer[hitIdx:], queryHit.ServantID)
+	err := writeStringLE(buffer[hitIdx:], queryHit.ServantID)
 	return buffer
 }
