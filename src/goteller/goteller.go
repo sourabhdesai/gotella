@@ -4,6 +4,7 @@ import (
 	"../ipaddr"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"sync"
@@ -14,6 +15,8 @@ type HitResult messages.HitResult
 const SEED = 7187
 
 type GoTeller struct {
+	alive          bool
+	debugFile      *io.Writer
 	addr           IPAddr
 	Neighbors      []IPAddr
 	NumShared      uint32
@@ -21,6 +24,7 @@ type GoTeller struct {
 	Port           uint16
 	NetworkSpeed   uint32
 	hashCount      uint32
+	servantID      string
 	randGen        *rand.Rand
 	savedPings     map[[16]byte]IPAddr
 	savedQueries   map[[16]byte]IPAddr
@@ -28,12 +32,29 @@ type GoTeller struct {
 	pingMapMutex   sync.RWMutex
 	queryMapMutex  sync.RWMutex
 	queryFunc      func(string) []HitResult
+	resultFunc     func([]QueryResult, uint32, string) []QueryResult
+	dataFunc       func(error, []byte, []byte)
+	requestFunc    func(uint32, string) []byte
 }
 
 func (teller *GoTeller) StartAtPort(port uint16) error {
+	teller.alive = true
 	teller.randGen = rand.New(SEED)
-	if queryFunc == nil {
-		return fmt.Errorf("Must set Query function (use SetQueryFunc)")
+	if teller.servantID == nil {
+		teller.alive = false
+		return fmt.Errorf("Must set Servant ID (use SetServantID)")
+	}
+	if teller.queryFunc == nil {
+		teller.alive = false
+		return fmt.Errorf("Must set Query callback function (use OnQuery)")
+	}
+	if teller.resultFunc == nil {
+		teller.alive = false
+		return fmt.Errorf("Must set Hit callback function (use OnHit)")
+	}
+	if teller.dataFunc == nil {
+		teller.alive = false
+		return fmt.Errorf("Must set Data callback function (use OnData)")
 	}
 	teller.Port = port
 	teller.addr.Port = port
@@ -45,8 +66,24 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 	return nil
 }
 
-func (teller *GoTeller) SetQueryFunc(qFunc func(string) []HitResult) {
+func (teller *GoTeller) SetDebugFile(file *io.Writer) {
+	teller.debugFile = file
+}
+
+func (teller *GoTeller) SetServantID(id string) {
+	teller.servantID = id
+}
+
+func (teller *GoTeller) OnQuery(qFunc func(string) []HitResult) {
 	teller.queryFunc = qFunc
+}
+
+func (teller *GoTeller) OnHit(rFunc func([]QueryResult, uint32, string) []QueryResult) {
+	teller.resultFunc = rFunc
+}
+
+func (teller *GoTeller) OnData(dFunc func(error, []byte, []byte)) {
+	teller.dataFunc = dFunc
 }
 
 func (teller *GoTeller) floodToNeighbors(msg []byte, from IPAddr) {
@@ -61,6 +98,10 @@ func (teller *GoTeller) floodToNeighbors(msg []byte, from IPAddr) {
 
 func (teller *GoTeller) sendToNeighbor(msg []byte, from IPAddr) {
 	//TODO: Implement this. Send message to neighbor
+}
+
+func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to IPAddr) {
+	// TODO: Implement this. Send get request to node at to address
 }
 
 func (teller *GoTeller) isNeighbor(from IPAddr) bool {

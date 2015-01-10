@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func (teller *GoTeller) onQuery(header *DescHeader, query *QueryMsg, from IPAddr) {
+func (teller *GoTeller) onQuery(header DescHeader, query QueryMsg, from IPAddr) {
 	if teller.NetworkSpeed >= query.MinSpeed {
 		// This node meets speed requirements for query
 		hitResults := teller.queryFunc(query.SearchQuery)
@@ -37,6 +37,9 @@ func (teller *GoTeller) onQuery(header *DescHeader, query *QueryMsg, from IPAddr
 		header.TTL--
 		header.Hops++
 		msgBuffer := append(header.ToBytes(), query.ToBytes())
+		teller.queryMapMutex.Lock()
+		teller.savedQueries[header.DescID] = from // Save to savedQueries map
+		teller.queryMapMutex.Unlock()
 		teller.floodToNeighbors(msgBuffer, from)
 	}
 }
@@ -56,5 +59,8 @@ func (teller *GoTeller) sendQuery(ttl byte, searchQuery string, minSpeed uint32,
 	}
 	headerBuffer := header.ToBytes()
 	msgBuffer := append(headerBuffer, queryBuffer)
+	teller.queryMapMutex.Lock()
+	teller.savedQueries[header.DescID] = from // Save to savedQueries map
+	teller.queryMapMutex.Unlock()
 	teller.floodToNeighbors(msgBuffer, from)
 }

@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func (teller *GoTeller) onPing(descHeader *DescHeader, from IPAddr) {
+func (teller *GoTeller) onPing(descHeader DescHeader, from IPAddr) {
 	pong := PongMsg{NumShared: teller.NumShared, NumKB: teller.NumKB}
 	pong.Addr = teller.addr
 	pongBuffer := pong.ToBytes()

@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func (teller *GoTeller) onPong(header *DescHeader, pong *PongMsg) {
+func (teller *GoTeller) onPong(header DescHeader, pong PongMsg) {
 	teller.pingMapMutex.RLock()
 	if from, ok := teller.savedPings[header.DescID]; ok {
 		teller.pingMapMutex.RUnock()
