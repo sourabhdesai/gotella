@@ -163,3 +163,7 @@ func (teller *GoTeller) newID() [16]byte {
 	teller.hashCount++
 	return id
 }
+
+func (teller *GoTeller) SendQuery(query string, ttl byte, minSpeed uint32) {
+	teller.sendQuery(query, ttl, minSpeed, teller.addr)
+}

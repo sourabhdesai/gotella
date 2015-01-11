@@ -46,7 +46,7 @@ func (teller *GoTeller) onQuery(header DescHeader, query QueryMsg, from IPAddr) 
 	}
 }
 
-func (teller *GoTeller) sendQuery(ttl byte, searchQuery string, minSpeed uint32, from IPAddr) {
+func (teller *GoTeller) sendQuery(searchQuery string, ttl byte, minSpeed uint32, from IPAddr) {
 	query := QueryMsg{
 		MinSpeed:    minSpeed,
 		SearchQuery: searchQuery,

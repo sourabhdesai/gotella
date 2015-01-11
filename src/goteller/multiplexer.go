@@ -172,11 +172,16 @@ func gnutellaReplyToConnect(connIO *bufio.ReadWriter) (bool, error) {
 		return false, err
 	}
 
-	if string(connectBuffer) != CONNECTOR {
+	connectStr := readStringLE(connectBuffer)
+
+	if connectStr != CONNECTOR {
 		return false, nil
 	}
 
-	err := sendBytes(connIO, []byte(REPLY)) // from requesthandler.go file
+	replyBuffer := make([]byte, len(REPLY))
+	writeStringLE(replyBuffer, REPLY)
+
+	err := sendBytes(connIO, replyBuffer) // from requesthandler.go file
 	if err != nil {
 		return false, nil
 	}
@@ -184,7 +189,9 @@ func gnutellaReplyToConnect(connIO *bufio.ReadWriter) (bool, error) {
 }
 
 func gnutellaConnect(connIO *bufio.ReadWriter) (bool, error) {
-	err := sendBytes(connIO, []byte(CONNECTOR))
+	connectBuffer := make([]byte, len(CONNECTOR))
+	writeStringLE(connectBuffer, CONNECTOR)
+	err := sendBytes(connIO, connectBuffer)
 	if err != nil {
 		return false, err
 	}
@@ -195,7 +202,8 @@ func gnutellaConnect(connIO *bufio.ReadWriter) (bool, error) {
 		return false, err
 	}
 
-	if string(replyBuffer) != REPLY {
+	replyStr = readStringLE(replyBuffer)
+	if replyStr != REPLY {
 		return false, nil
 	}
 
