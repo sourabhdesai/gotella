@@ -28,15 +28,3 @@ func (teller *GoTeller) onPing(descHeader DescHeader, from IPAddr) {
 		teller.pingMapMutex.Unlock()
 	}
 }
-
-func (teller *GoTeller) sendPings(ttl byte) {
-	header := DescHeader{
-		DescID:      teller.newID(),
-		PayloadDesc: messages.PING,
-		TTL:         ttl,
-		Hops:        0,
-		PayloadLen:  0x0000000000,
-	}
-	msgBuffer := header.ToBytes()
-	teller.floodToNeighbors(msgBuffer, teller.Addr)
-}

@@ -20,6 +20,7 @@ func (teller *GoTeller) startServant() {
 		panic(err.Error())
 	}
 
+	go teller.startPinger() // Will periodically send pings
 	for teller.alive {
 		conn, err := listener.Accept()
 		if err != nil && teller.debugFile != nil {

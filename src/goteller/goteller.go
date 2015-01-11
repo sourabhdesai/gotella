@@ -10,11 +10,13 @@ import (
 	"net"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type HitResult messages.HitResult
 
 const SEED = 7187
+const DEFAULT_PING_INTERVAL time.Duration = 3 * time.Second
 
 type GoTeller struct {
 	alive          bool
@@ -25,6 +27,7 @@ type GoTeller struct {
 	NumKB          uint32
 	Port           uint16
 	NetworkSpeed   uint32
+	PingInterval   time.Duration
 	hashCount      uint32
 	servantID      string
 	randGen        *rand.Rand
@@ -63,6 +66,9 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 	err := teller.SetToLocalIP()
 	if err != nil {
 		return err
+	}
+	if teller.PingInterval == 0 {
+		teller.PingInterval = DEFAULT_PING_INTERVAL
 	}
 	// TODO: Initialize other things
 	return nil
@@ -103,13 +109,13 @@ func (teller *GoTeller) floodToNeighbors(msg []byte, from IPAddr) {
 	}
 }
 
-func (teller *GoTeller) sendToNeighbor(msg []byte, to IPAddr) {
+func (teller *GoTeller) sendToNeighbor(msg []byte, to IPAddr) bool {
 	conn, err := net.Dial("tcp", to.String())
 	if err != nil {
 		if teller.debugFile != nil {
 			fmt.Fprintln(teller.debugFile, err)
 		}
-		return
+		return false
 	}
 
 	defer conn.Close()
@@ -120,10 +126,14 @@ func (teller *GoTeller) sendToNeighbor(msg []byte, to IPAddr) {
 		if teller.debugFile != nil {
 			fmt.Fprintln(teller.debugFile, err)
 		}
-		return
+		return false
 	}
 	if !connected {
-		return
+		err = fmt.Errorf("Didn't receive a valid connect reply")
+		if teller.debugFile != nil {
+			fmt.Fprintln(teller.debugFile, err)
+		}
+		return false
 	}
 
 	err = sendBytes(connIO, msg) // in requesthandler.go
@@ -131,7 +141,10 @@ func (teller *GoTeller) sendToNeighbor(msg []byte, to IPAddr) {
 		if teller.debugFile != nil {
 			fmt.Fprintln(teller.debugFile, err)
 		}
+		return false
 	}
+
+	return true
 }
 
 func (teller *GoTeller) isNeighbor(from IPAddr) bool {
@@ -149,6 +162,17 @@ func (teller *GoTeller) addNeighbor(newNode IPAddr) {
 	teller.neighborsMutex.Lock()
 	defer teller.neighborsMutex.Unlock()
 	teller.Neighbors = append(teller.Neighbors, newNode)
+}
+
+func (teller *GoTeller) removeNeighbor(deadNeighbor IPAddr) {
+	teller.neighborsMutex.Lock()
+	defer teller.neighborsMutex.Unlock()
+	for i, addr := range teller.Neighbors {
+		if addr == deadNeighbor {
+			teller.Neighbors = append(teller.Neighbors[:i], teller.Neighbors[i+1:]...)
+			break
+		}
+	}
 }
 
 func (teller *GoTeller) newID() [16]byte {
