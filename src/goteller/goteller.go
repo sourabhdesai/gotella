@@ -2,11 +2,13 @@ package goteller
 
 import (
 	"../ipaddr"
+	"bufio"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"math/rand"
 	"net"
+	"net/http"
 	"sync"
 )
 
@@ -33,7 +35,7 @@ type GoTeller struct {
 	queryMapMutex  sync.RWMutex
 	queryFunc      func(string) []HitResult
 	resultFunc     func([]QueryResult, uint32, string) []QueryResult
-	dataFunc       func(error, []byte, []byte)
+	dataFunc       func(error, uint32, string, *net.Response)
 	requestFunc    func(uint32, string) []byte
 }
 
@@ -71,7 +73,11 @@ func (teller *GoTeller) SetDebugFile(file *io.Writer) {
 }
 
 func (teller *GoTeller) SetServantID(id string) {
-	teller.servantID = id
+	if l := len(id); l <= 16 {
+		teller.servantID = id
+	} else {
+		teller.servantID = id[:16]
+	}
 }
 
 func (teller *GoTeller) OnQuery(qFunc func(string) []HitResult) {
@@ -82,10 +88,11 @@ func (teller *GoTeller) OnHit(rFunc func([]QueryResult, uint32, string) []QueryR
 	teller.resultFunc = rFunc
 }
 
-func (teller *GoTeller) OnData(dFunc func(error, []byte, []byte)) {
+func (teller *GoTeller) OnData(dFunc func(error, uint32, string, *net.Response)) {
 	teller.dataFunc = dFunc
 }
 
+// send msg to all neighbors except for from
 func (teller *GoTeller) floodToNeighbors(msg []byte, from IPAddr) {
 	teller.neighborsMutex.RLock()
 	defer teller.neighborsMutex.RUnclock()
@@ -96,12 +103,35 @@ func (teller *GoTeller) floodToNeighbors(msg []byte, from IPAddr) {
 	}
 }
 
-func (teller *GoTeller) sendToNeighbor(msg []byte, from IPAddr) {
-	//TODO: Implement this. Send message to neighbor
-}
+func (teller *GoTeller) sendToNeighbor(msg []byte, to IPAddr) {
+	conn, err := net.Dial("tcp", to.String())
+	if err != nil {
+		if teller.debugFile != nil {
+			fmt.Fprintln(teller.debugFile, err)
+		}
+		return
+	}
 
-func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to IPAddr) {
-	// TODO: Implement this. Send get request to node at to address
+	defer conn.Close()
+
+	connIO := bufio.NewReadWriter(&conn, &conn)
+	connected, err := gnutellaConnect(connIO)
+	if err != nil {
+		if teller.debugFile != nil {
+			fmt.Fprintln(teller.debugFile, err)
+		}
+		return
+	}
+	if !connected {
+		return
+	}
+
+	err = sendBytes(connIO, msg) // in requesthandler.go
+	if err != nil {
+		if teller.debugFile != nil {
+			fmt.Fprintln(teller.debugFile, err)
+		}
+	}
 }
 
 func (teller *GoTeller) isNeighbor(from IPAddr) bool {

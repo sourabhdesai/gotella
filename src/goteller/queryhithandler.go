@@ -15,8 +15,7 @@ func (teller *GoTeller) onQueryHit(header DescHeader, queryHit QueryHitMsg) {
 			results := resultsFromHit(queryHit)
 			chosenResults := teller.resultFunc(results, queryHit.Speed, string(queryHit.ServantID))
 			for _, result := range chosenResults {
-				// TODO: Save info here to correlate the request with the response you will receive
-				teller.sendRequest(result.fileIndex, result.filename, result.addr)
+				go teller.sendRequest(result.fileIndex, result.filename, result.addr)
 			}
 		} else if header.TTL > 0 {
 			header.TTL--

@@ -11,6 +11,8 @@ import (
 )
 
 const HEADER_LEN int = 23
+const CONNECTOR string = "GNUTELLA CONNECT/0.4\n\n"
+const REPLY string = "GNUTELLA OK\n\n"
 
 func (teller *GoTeller) startServant() {
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", teller.addr.Port))
@@ -58,6 +60,16 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 		return
 	}
 
+	connected, err := gnutellaReplyToConnect(connIO)
+	if err != nil {
+		if teller.debugFile != nil {
+			fmt.Fprintln(teller.debugFile, err)
+		}
+		return
+	} else if !connected {
+		return // Probably failed to get correct CONNECTOR string
+	}
+
 	headerBuffer := make([]byte, HEADER_LEN)
 	n, err := connIO.Reader.Read(headerBuffer)
 	if n != HEADER_LEN {
@@ -74,6 +86,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			if teller.debugFile != nil {
 				fmt.Fprintf(teller.debugFile, err)
 			}
+			return
 		}
 
 		from, err := ipaddr.ParseAddrString(conn.RemoteAddr().String()) // May need to switch to conn.LocalAddr()
@@ -150,5 +163,41 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			}
 		}
 	}
+}
 
+func gnutellaReplyToConnect(connIO *bufio.ReadWriter) (bool, error) {
+	connectBuffer := make([]byte, len(CONNECTOR))
+	n, err := connIO.Reader.Read(connectBuffer)
+	if err != nil {
+		return false, err
+	}
+
+	if string(connectBuffer) != CONNECTOR {
+		return false, nil
+	}
+
+	err := sendBytes(connIO, []byte(REPLY)) // from requesthandler.go file
+	if err != nil {
+		return false, nil
+	}
+	return true, nil
+}
+
+func gnutellaConnect(connIO *bufio.ReadWriter) (bool, error) {
+	err := sendBytes(connIO, []byte(CONNECTOR))
+	if err != nil {
+		return false, err
+	}
+
+	replyBuffer := make([]byte, len(REPLY))
+	n, err := connIO.Reader.Read(replyBuffer)
+	if err != nil {
+		return false, err
+	}
+
+	if string(replyBuffer) != REPLY {
+		return false, nil
+	}
+
+	return true, nil
 }

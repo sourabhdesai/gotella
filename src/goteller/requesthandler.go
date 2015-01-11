@@ -10,6 +10,32 @@ import (
 	"strings"
 )
 
+func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to IPAddr) {
+	endpoint := to.String()
+	path := fmt.Sprintf("/get/%d/%s", fileIndex, filename)
+	req := net.NewRequest("GET", endpoint+path, nil)
+	conn, err := net.Dial("tcp", endpoint)
+	if err != nil {
+		teller.dataFunc(err, fileIndex, filename, nil)
+		return
+	}
+	err := req.Write(conn)
+	if err != nil {
+		teller.dataFunc(err, fileIndex, filename, nil)
+		return
+	}
+
+	connReader = bufio.NewReader(conn)
+	res, err := net.ReadResponse(connReader, req)
+	if err != nil {
+		teller.dataFunc(err, fileIndex, filename, nil)
+		return
+	}
+
+	teller.dataFunc(nil, fileIndex, filename, res)
+
+}
+
 func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 	req, err := net.ReadRequest(connIO.Reader)
 	if err != nil {

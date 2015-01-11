@@ -12,12 +12,14 @@ func (teller *GoTeller) onQuery(header DescHeader, query QueryMsg, from IPAddr) 
 		hitResults := teller.queryFunc(query.SearchQuery)
 		if len(hitResults) > 0 {
 			// Found results for given query
+			var id [16]byte
+			copy(id[:], []byte(teller.servantID))
 			queryHit := QueryHitMsg{
 				NumHits:   len(hitResults),
 				Addr:      teller.addr,
 				Speed:     teller.NetworkSpeed,
 				ResultSet: hitResults,
-				ServantID: teller.ID,
+				ServantID: id,
 			}
 			queryHitBuffer := queryHit.ToBytes()
 			queryHitHeader := DescHeader{
