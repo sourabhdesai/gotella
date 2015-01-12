@@ -1,6 +1,7 @@
 package ipaddr
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 )
@@ -24,11 +25,6 @@ func parseString(addr string, ipAddr *IPAddr) error {
 	if n != 5 {
 		return fmt.Errorf("Input string \"%s\" wasn't correct format", addr)
 	}
-	ipInt64, n0 := binary.Uvarint(ipAddr.IP[:])
-	if n0 <= 0 {
-		return fmt.Errorf("Error in processing IP bytes")
-	}
-	binary.BigEndian.PutUint32(ipAddr.IP[:], uint32(ipInt64))
 	return nil
 }
 
@@ -49,7 +45,8 @@ func parseBytes(rawAddr []byte, ipAddr *IPAddr) error {
 		return fmt.Errorf("Expected input buffer of length 6. Actualy length was %d", len(rawAddr))
 	}
 	ipAddr.Port = binary.LittleEndian.Uint16(rawAddr[:2])
-	copy(ipAddr.IP[:], rawAddr[2:])
+	ipBEBuffer := bytes.NewReader(rawAddr[2:])
+	binary.Read(ipBEBuffer, binary.BigEndian, ipAddr.IP[:])
 	return nil
 }
 
@@ -67,7 +64,9 @@ func (ipAddr *IPAddr) ParseBytes(rawAddr []byte) error {
 func (ipAddr *IPAddr) ToBytes() []byte {
 	var buffer [6]byte
 	binary.LittleEndian.PutUint16(buffer[:2], ipAddr.Port)
-	copy(buffer[2:], ipAddr.IP[:])
+	buffWriter := new(bytes.Buffer)
+	binary.Write(buffWriter, binary.BigEndian, ipAddr.IP[:])
+	copy(buffer[2:], buffWriter.Bytes())
 	return buffer[:]
 }
 
