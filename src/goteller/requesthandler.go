@@ -1,32 +1,36 @@
 package goteller
 
 import (
+	"../ipaddr"
 	"bufio"
 	"fmt"
+	"net"
 	"net/http"
-	"net/url"
-	"os"
 	"regexp"
-	"strings"
+	"strconv"
 )
 
-func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to IPAddr) {
+func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to ipaddr.IPAddr) {
 	endpoint := to.String()
 	path := fmt.Sprintf("/get/%d/%s", fileIndex, filename)
-	req := net.NewRequest("GET", endpoint+path, nil)
+	req, err := http.NewRequest("GET", endpoint+path, nil)
+	if err != nil {
+		teller.dataFunc(err, fileIndex, filename, nil)
+		return
+	}
 	conn, err := net.Dial("tcp", endpoint)
 	if err != nil {
 		teller.dataFunc(err, fileIndex, filename, nil)
 		return
 	}
-	err := req.Write(conn)
+	err = req.Write(conn)
 	if err != nil {
 		teller.dataFunc(err, fileIndex, filename, nil)
 		return
 	}
 
-	connReader = bufio.NewReader(conn)
-	res, err := net.ReadResponse(connReader, req)
+	connReader := bufio.NewReader(conn)
+	res, err := http.ReadResponse(connReader, req)
 	if err != nil {
 		teller.dataFunc(err, fileIndex, filename, nil)
 		return
@@ -37,10 +41,10 @@ func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to IPAddr
 }
 
 func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
-	req, err := net.ReadRequest(connIO.Reader)
+	req, err := http.ReadRequest(connIO.Reader)
 	if err != nil {
 		if teller.debugFile != nil {
-			fmt.Println(teller.debugFile, err)
+			fmt.Fprintln(*teller.debugFile, err)
 		}
 		return
 	}
@@ -49,7 +53,7 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 	match, err := regexp.MatchString("get/[0-9]+/..*", path)
 	if err != nil {
 		if teller.debugFile != nil {
-			fmt.Println(teller.debugFile, err)
+			fmt.Fprintln(*teller.debugFile, err)
 		}
 	}
 	if !match {
@@ -57,7 +61,7 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 		err := respondNotFound(connIO)
 		if err != nil {
 			if teller.debugFile != nil {
-				fmt.Fprintln(teller.debugFile, err)
+				fmt.Fprintln(*teller.debugFile, err)
 			}
 		}
 	} else {
@@ -66,21 +70,21 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 		n, err := fmt.Sscanf(path, "get/%d/%s", &fileIdx, &filename)
 		if err != nil {
 			if teller.debugFile != nil {
-				fmt.Fprintln(teller.debugFile, err)
+				fmt.Fprintln(*teller.debugFile, err)
 			}
 		} else if n != 2 {
 			if teller.debugFile != nil {
-				fmt.Fprintf(teller.debugFile, "Scanned %d out of 2 values", n)
+				fmt.Fprintf(*teller.debugFile, "Scanned %d out of 2 values in path \"%s\"", n, path)
 			}
 		} else {
 			// Valid request
 			bodyBuffer := teller.requestFunc(fileIdx, filename)
-			httpHeader := "HTTP 200 OK\r\nServer: Gnutella\r\nContent-type: application/binary\r\nContent-length: " + len(bodyBuffer) + "\r\n\r\n"
-			response := append([]byte(httpHeader), bodyBuffer)
-			err := sendBytes(connIO, repsonse)
+			httpHeader := "HTTP 200 OK\r\nServer: Gnutella\r\nContent-type: application/binary\r\nContent-length: " + strconv.Itoa(len(bodyBuffer)) + "\r\n\r\n"
+			response := append([]byte(httpHeader), bodyBuffer...)
+			err := sendBytes(connIO, response)
 			if err != nil {
 				if teller.debugFile != nil {
-					fmt.Fprintln(teller.debugFile, err)
+					fmt.Fprintln(*teller.debugFile, err)
 				}
 			}
 		}
@@ -94,7 +98,7 @@ func respondNotFound(connIO *bufio.ReadWriter) error {
 }
 
 func sendBytes(connIO *bufio.ReadWriter, buffer []byte) error {
-	n, err := connIO.Writer.Write(buffer)
+	_, err := connIO.Writer.Write(buffer)
 	if err != nil {
 		return err
 	} else {

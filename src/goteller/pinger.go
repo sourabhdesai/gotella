@@ -1,8 +1,8 @@
 package goteller
 
 import (
+	"../messages"
 	"fmt"
-	"net"
 	"time"
 )
 
@@ -19,7 +19,7 @@ func (teller *GoTeller) pingLoop(ttl byte) {
 	defer func() {
 		if r := recover(); r != nil {
 			if teller.debugFile != nil {
-				fmt.Fprintln(teller.debugFile, r)
+				fmt.Fprintln(*teller.debugFile, r)
 			}
 		}
 	}()
@@ -27,7 +27,7 @@ func (teller *GoTeller) pingLoop(ttl byte) {
 	// Sleep for a set interval period
 	time.Sleep(teller.PingInterval)
 
-	header := DescHeader{
+	header := messages.DescHeader{
 		DescID:      teller.newID(),
 		PayloadDesc: messages.PING,
 		TTL:         ttl,
@@ -42,8 +42,8 @@ func (teller *GoTeller) pingLoop(ttl byte) {
 			teller.neighborsMutex.RUnlock()
 		}
 	}()
-	for addr, i := range teller.Neighbors {
-		sent := teller.sendToNeighbor
+	for _, addr := range teller.Neighbors {
+		sent := teller.sendToNeighbor(pingBuffer, addr)
 		if !sent { // !sent Indicates the neighbor is dead
 			teller.neighborsMutex.RUnlock()
 			rlocked = false

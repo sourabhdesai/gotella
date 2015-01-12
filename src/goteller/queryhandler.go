@@ -3,10 +3,9 @@ package goteller
 import (
 	"../ipaddr"
 	"../messages"
-	"fmt"
 )
 
-func (teller *GoTeller) onQuery(header DescHeader, query QueryMsg, from IPAddr) {
+func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.QueryMsg, from ipaddr.IPAddr) {
 	if teller.NetworkSpeed >= query.MinSpeed {
 		// This node meets speed requirements for query
 		hitResults := teller.queryFunc(query.SearchQuery)
@@ -14,23 +13,23 @@ func (teller *GoTeller) onQuery(header DescHeader, query QueryMsg, from IPAddr) 
 			// Found results for given query
 			var id [16]byte
 			copy(id[:], []byte(teller.servantID))
-			queryHit := QueryHitMsg{
-				NumHits:   len(hitResults),
+			queryHit := messages.QueryHitMsg{
+				NumHits:   byte(len(hitResults)),
 				Addr:      teller.addr,
 				Speed:     teller.NetworkSpeed,
 				ResultSet: hitResults,
 				ServantID: id,
 			}
 			queryHitBuffer := queryHit.ToBytes()
-			queryHitHeader := DescHeader{
+			queryHitHeader := messages.DescHeader{
 				DescID:      header.DescID,
-				PayloadDesc: messages.QueryHit,
+				PayloadDesc: messages.QUERYHIT,
 				TTL:         header.Hops,
 				Hops:        0,
-				PayloadLen:  len(queryHitBuffer),
+				PayloadLen:  uint32(len(queryHitBuffer)),
 			}
 			headerBuffer := queryHitHeader.ToBytes()
-			msgBuffer := append(headerBuffer, queryHitBuffer)
+			msgBuffer := append(headerBuffer, queryHitBuffer...)
 			teller.sendToNeighbor(msgBuffer, from)
 		}
 	}
@@ -38,7 +37,7 @@ func (teller *GoTeller) onQuery(header DescHeader, query QueryMsg, from IPAddr) 
 	if header.TTL > 0 {
 		header.TTL--
 		header.Hops++
-		msgBuffer := append(header.ToBytes(), query.ToBytes())
+		msgBuffer := append(header.ToBytes(), query.ToBytes()...)
 		teller.queryMapMutex.Lock()
 		teller.savedQueries[header.DescID] = from // Save to savedQueries map
 		teller.queryMapMutex.Unlock()
@@ -46,21 +45,21 @@ func (teller *GoTeller) onQuery(header DescHeader, query QueryMsg, from IPAddr) 
 	}
 }
 
-func (teller *GoTeller) sendQuery(searchQuery string, ttl byte, minSpeed uint32, from IPAddr) {
-	query := QueryMsg{
+func (teller *GoTeller) sendQuery(searchQuery string, ttl byte, minSpeed uint32, from ipaddr.IPAddr) {
+	query := messages.QueryMsg{
 		MinSpeed:    minSpeed,
 		SearchQuery: searchQuery,
 	}
 	queryBuffer := query.ToBytes()
-	header := DescHeader{
+	header := messages.DescHeader{
 		DescID:      teller.newID(),
 		PayloadDesc: messages.QUERY,
 		TTL:         ttl,
 		Hops:        0,
-		PayloadLen:  len(queryBuffer),
+		PayloadLen:  uint32(len(queryBuffer)),
 	}
 	headerBuffer := header.ToBytes()
-	msgBuffer := append(headerBuffer, queryBuffer)
+	msgBuffer := append(headerBuffer, queryBuffer...)
 	teller.queryMapMutex.Lock()
 	teller.savedQueries[header.DescID] = from // Save to savedQueries map
 	teller.queryMapMutex.Unlock()

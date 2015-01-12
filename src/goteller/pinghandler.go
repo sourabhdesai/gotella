@@ -1,23 +1,22 @@
-package gotella
+package goteller
 
 import (
+	"../ipaddr"
 	"../messages"
-	"fmt"
-	"net"
 )
 
-func (teller *GoTeller) onPing(descHeader DescHeader, from IPAddr) {
-	pong := PongMsg{NumShared: teller.NumShared, NumKB: teller.NumKB}
+func (teller *GoTeller) onPing(descHeader messages.DescHeader, from ipaddr.IPAddr) {
+	pong := messages.PongMsg{NumShared: teller.NumShared, NumKB: teller.NumKB}
 	pong.Addr = teller.addr
 	pongBuffer := pong.ToBytes()
-	pongHeader := DescHeader{
+	pongHeader := messages.DescHeader{
 		DescID:      descHeader.DescID, // Very Important! Pong Must be same ID as Ping
 		PayloadDesc: messages.PONG,
 		TTL:         descHeader.Hops,
-		PayloadLen:  len(pongBuffer),
+		PayloadLen:  uint32(len(pongBuffer)),
 	}
 	headerBuffer := pongHeader.ToBytes()
-	msgBuffer := append(headerBuffer, pongBuffer)
+	msgBuffer := append(headerBuffer, pongBuffer...)
 	teller.sendToNeighbor(msgBuffer, from)
 	descHeader.TTL--
 	descHeader.Hops++

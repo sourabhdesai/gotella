@@ -4,7 +4,6 @@ Convenience Class to Marshall and Unmarshall received Description Headers
 package messages
 
 import (
-	"../ipaddr"
 	"bytes"
 	"encoding/binary"
 	"fmt"
@@ -45,12 +44,13 @@ func parseHeaderBytes(rawHeader []byte, descHeader *DescHeader) error {
 		return fmt.Errorf("input must be of length 23. Actual length == %d", len(rawHeader))
 	}
 	// Copy contents into member variables
-	var descIDString string = readStringLE(rawHeader[:16])
-	descHeader.DescID = []byte(string)
-	descHeader.PayloadDesc = readByteLE(rawHeader[16:17])
-	descHeader.TTL = readByteLE(rawHeader[17:18])
-	descHeader.Hops = readByteLE(rawHeader[18:19])
+	var descIDString string = ReadStringLE(rawHeader[:16])
+	copy(descHeader.DescID[:], []byte(descIDString))
+	descHeader.PayloadDesc = ReadByteLE(rawHeader[16:17])
+	descHeader.TTL = ReadByteLE(rawHeader[17:18])
+	descHeader.Hops = ReadByteLE(rawHeader[18:19])
 	descHeader.PayloadLen = binary.LittleEndian.Uint32(rawHeader[19:])
+	return nil
 }
 
 func ParseHeaderBytes(rawHeader []byte) (*DescHeader, error) {
@@ -65,7 +65,7 @@ func (descHeader *DescHeader) ParseHeaderBytes(rawHeader []byte) error {
 }
 
 func (descHeader *DescHeader) ToBytes() []byte {
-	var b bytes.Buffer
+	b := new(bytes.Buffer)
 	binary.Write(b, binary.LittleEndian, descHeader.DescID[:])
 	binary.Write(b, binary.LittleEndian, descHeader.PayloadDesc) // buffer[16] = descHeader.PayloadDesc
 	binary.Write(b, binary.LittleEndian, descHeader.TTL)         // buffer[17] = descHeader.TTL
@@ -75,4 +75,5 @@ func (descHeader *DescHeader) ToBytes() []byte {
 	if l := len(buffer); l != 23 {
 		fmt.Println(fmt.Errorf("ToBytes() failed. Buffer was of length %d", l)) // Debug statement...should never occurr
 	}
+	return buffer
 }

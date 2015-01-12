@@ -1,17 +1,15 @@
 package ipaddr
 
 import (
-	"encoding/binary"
 	"fmt"
 	"net"
-	"os"
 )
 
 func getLocalIP() (string, error) {
 	addrs, err := net.InterfaceAddrs()
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	for _, address := range addrs {
@@ -23,5 +21,5 @@ func getLocalIP() (string, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("Couldn't find a valid local IP address")
+	return "", fmt.Errorf("Couldn't find a valid local IP address")
 }

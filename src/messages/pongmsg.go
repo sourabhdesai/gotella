@@ -7,7 +7,7 @@ import (
 )
 
 type PongMsg struct {
-	Addr      IPAddr
+	Addr      ipaddr.IPAddr
 	NumShared uint32
 	NumKB     uint32
 }

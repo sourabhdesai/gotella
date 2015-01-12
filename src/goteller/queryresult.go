@@ -3,7 +3,6 @@ package goteller
 import (
 	"../ipaddr"
 	"../messages"
-	"fmt"
 )
 
 type HitResult messages.HitResult
@@ -12,7 +11,7 @@ type QueryResult struct {
 	fileIndex uint32
 	fileSize  uint32
 	filename  string
-	addr      IPAddr
+	addr      ipaddr.IPAddr
 }
 
 func (qr *QueryResult) GetFileIndex() uint32 {
@@ -27,7 +26,7 @@ func (qr *QueryResult) GetFilename() string {
 	return qr.filename
 }
 
-func resultsFromHit(queryHit QueryHitMsg) []QueryResult {
+func resultsFromHit(queryHit messages.QueryHitMsg) []QueryResult {
 	numResults := len(queryHit.ResultSet)
 	if numResults == 0 {
 		return []QueryResult{} // Empty slice

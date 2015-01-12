@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func writeStringLE(buff []byte, str string) {
+func WriteStringLE(buff []byte, str string) {
 	minLen := min(len(buff), len(str))
 	buffer := bytes.NewBufferString(str)
 	for i := 0; i < minLen; i++ {
@@ -16,11 +16,10 @@ func writeStringLE(buff []byte, str string) {
 		}
 	}
 	copy(buff, buffer.Bytes())
-	return nil
 }
 
-func writeByteLE(buffer []byte, b byte) {
-	var buff bytes.Buffer
+func WriteByteLE(buffer []byte, b byte) {
+	buff := new(bytes.Buffer)
 	err := binary.Write(buff, binary.LittleEndian, b)
 	if err != nil {
 		panic(err.Error())
@@ -31,7 +30,7 @@ func writeByteLE(buffer []byte, b byte) {
 	}
 }
 
-func readStringLE(buff []byte) string {
+func ReadStringLE(buff []byte) string {
 	reader := bytes.NewReader(buff)
 	writer := make([]byte, len(buff))
 	err := binary.Read(reader, binary.LittleEndian, writer)
@@ -40,14 +39,14 @@ func readStringLE(buff []byte) string {
 	}
 	return string(writer)
 }
-func readByteLE(buff []byte) byte {
+func ReadByteLE(buff []byte) byte {
 	if len(buff) < 1 {
 		panic("Zero length buffer")
 	}
 	buff = buff[:1] // Only care about first byte
 	reader := bytes.NewReader(buff)
 	writer := make([]byte, 1)
-	err := binary.Read(reader, Binary.LittleEndian, writer)
+	err := binary.Read(reader, binary.LittleEndian, writer)
 	if err != nil {
 		panic(err.Error())
 	}

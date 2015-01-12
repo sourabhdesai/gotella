@@ -9,7 +9,7 @@ import (
 type PushMsg struct {
 	ServantID string
 	FileIndex uint32
-	Addr      IPAddr
+	Addr      ipaddr.IPAddr
 }
 
 func parsePushBytes(buffer []byte, push *PushMsg) error {

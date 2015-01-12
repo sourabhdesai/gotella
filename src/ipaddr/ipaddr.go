@@ -103,6 +103,7 @@ func (ipAddr *IPAddr) SetToLocalIP() error {
 	return err1 // Could be nil
 }
 
+/*
 func test1() {
 	addr, err := ParseString("127.0.0.1:80")
 	for i := 0; i < 10; i++ {
@@ -144,6 +145,7 @@ func test2() {
 	}
 	fmt.Println(addr)
 }
+*/
 
 /*
 func main() {

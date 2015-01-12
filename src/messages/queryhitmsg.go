@@ -14,7 +14,7 @@ type HitResult struct {
 
 type QueryHitMsg struct {
 	NumHits   byte
-	Addr      IPAddr
+	Addr      ipaddr.IPAddr
 	Speed     uint32
 	ResultSet []HitResult
 	ServantID [16]byte
@@ -41,14 +41,14 @@ func parseHitResultBytes(buffer []byte, hit *HitResult) error {
 		return fmt.Errorf("Couldn't find double null character in input buffer")
 	}
 	var err error = nil
-	hit.Filename, err = readStringLE(filenameBuffer[:nullIdx])
+	hit.Filename = ReadStringLE(filenameBuffer[:nullIdx])
 	return err // err might be nil
 }
 
 func ParseHitResultBytes(buffer []byte) (*HitResult, error) {
 	hit := new(HitResult)
 	err := parseHitResultBytes(buffer, hit)
-	return err
+	return hit, err
 }
 
 func (hit *HitResult) ParseBytes(buffer []byte) error {
@@ -65,7 +65,7 @@ func (hit *HitResult) ToBytes() []byte {
 	buffer := make([]byte, bufferLen)
 	binary.LittleEndian.PutUint32(buffer[:4], hit.FileIndex)
 	binary.LittleEndian.PutUint32(buffer[4:8], hit.FileSize)
-	err := writeStringLE(buffer[:bufferLen-2], hit.Filename)
+	WriteStringLE(buffer[:bufferLen-2], hit.Filename)
 	buffer[bufferLen-2] = 0x00
 	buffer[bufferLen-1] = 0x00
 	return buffer
@@ -84,7 +84,7 @@ func parseQueryHitBytes(buffer []byte, queryHit *QueryHitMsg) error {
 	queryHit.ResultSet = make([]HitResult, 0, queryHit.NumHits) // slice with 0 len, NumHits cap
 	// Parse the Results Set
 	var hitIdx int = 11
-	for i := 0; i < queryHit.NumHits; i++ {
+	for i := 0; byte(i) < queryHit.NumHits; i++ {
 		if hitIdx > len(buffer)-16 { // Last 16 bytes are for servent identifier
 			return fmt.Errorf("Number of Hits indicated doesn't match number of hits given")
 		}
@@ -92,12 +92,11 @@ func parseQueryHitBytes(buffer []byte, queryHit *QueryHitMsg) error {
 		if err1 != nil {
 			return err1
 		}
-		append(queryHit.ResultSet, *hit)
+		queryHit.ResultSet = append(queryHit.ResultSet, *hit)
 		hitIdx += hit.ByteLength()
 	}
-	var err1 error = nil
-	queryHit.ServantID, err1 = readStringLE(buffer[hitIdx:])
-	return er1r // err1 might be nil
+	copy(queryHit.ServantID[:], []byte(ReadStringLE(buffer[hitIdx:])))
+	return nil
 }
 
 func ParseQueryHitBytes(buffer []byte) (*QueryHitMsg, error) {
@@ -132,6 +131,6 @@ func (queryHit *QueryHitMsg) ToBytes() []byte {
 		copy(buffer[hitIdx:], hitBytes)
 		hitIdx += len(hitBytes)
 	}
-	err := writeStringLE(buffer[hitIdx:], queryHit.ServantID)
+	WriteStringLE(buffer[hitIdx:], string(queryHit.ServantID[:]))
 	return buffer
 }
