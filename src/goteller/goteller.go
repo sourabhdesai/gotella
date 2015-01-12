@@ -60,6 +60,10 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 		teller.alive = false
 		return fmt.Errorf("Must set Data callback function (use OnData)")
 	}
+	if len(teller.Neighbors) == 0 {
+		teller.alive = false
+		return fmt.Errorf("Must set initial neighbors (use SetInitNeighbors)")
+	}
 	teller.Port = port
 	teller.addr.Port = port
 	err := teller.addr.SetToLocalIP()
@@ -69,7 +73,20 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 	if teller.PingInterval == 0 {
 		teller.PingInterval = DEFAULT_PING_INTERVAL
 	}
+
+	teller.startServant()
 	// TODO: Initialize other things
+	return nil
+}
+
+func (teller *GoTeller) SetInitNeighbors(addrs []string) error {
+	for _, address := range addrs {
+		addr, err := ParseAddrString(address)
+		if err != nil {
+			return err
+		}
+		teller.Neighbors = append(teller.Neighbors, addr)
+	}
 	return nil
 }
 
