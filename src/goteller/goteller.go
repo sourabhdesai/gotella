@@ -38,7 +38,7 @@ type GoTeller struct {
 	queryFunc      func(string) []messages.HitResult
 	resultFunc     func([]QueryResult, uint32, string) []QueryResult
 	dataFunc       func(error, uint32, string, *http.Response)
-	requestFunc    func(uint32, string) (io.Reader, int64)
+	requestFunc    func(uint32, string) (io.ReadCloser, int64)
 }
 
 func (teller *GoTeller) StartAtPort(port uint16) error {
@@ -123,7 +123,7 @@ func (teller *GoTeller) OnData(dFunc func(error, uint32, string, *http.Response)
 	teller.dataFunc = dFunc
 }
 
-func (teller *GoTeller) OnRequest(reqFunc func(uint32, string) (io.Reader, int64)) {
+func (teller *GoTeller) OnRequest(reqFunc func(uint32, string) (io.ReadCloser, int64)) {
 	teller.requestFunc = reqFunc
 }
 

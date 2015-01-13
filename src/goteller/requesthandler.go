@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 )
@@ -64,11 +63,23 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 	if err != nil || n != 2 {
 		res := buildNotFoundResponse(req)
 		res.Write(connIO.Writer)
+		err = connIO.Writer.Flush()
+		if err != nil {
+			if teller.debugFile != nil {
+				fmt.Fprintln(teller.debugFile, err)
+			}
+		}
 	} else {
 		// Valid request
 		bodyReader, length := teller.requestFunc(fileIdx, filename)
 		res := buildResponse("200 OK", 200, bodyReader, length, req)
 		res.Write(connIO.Writer)
+		err = connIO.Writer.Flush()
+		if err != nil {
+			if teller.debugFile != nil {
+				fmt.Fprintln(teller.debugFile, err)
+			}
+		}
 	}
 }
 
@@ -76,7 +87,7 @@ func buildNotFoundResponse(req *http.Request) http.Response {
 	return buildResponse("404 Not Found", 404, nil, 0, req)
 }
 
-func buildResponse(status string, statuscode int, body io.Reader, bodyLen int64, req *http.Request) http.Response {
+func buildResponse(status string, statuscode int, body io.ReadCloser, bodyLen int64, req *http.Request) http.Response {
 	res := http.Response{
 		Status:        status,
 		StatusCode:    statuscode,
@@ -88,8 +99,7 @@ func buildResponse(status string, statuscode int, body io.Reader, bodyLen int64,
 		Request:       req,
 	}
 	if bodyLen > int64(0) {
-		bodyReadCloser := ioutil.NopCloser(body)
-		res.Body = bodyReadCloser
+		res.Body = body
 	}
 	return res
 }
