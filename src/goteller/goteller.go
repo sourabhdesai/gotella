@@ -88,6 +88,10 @@ func (teller *GoTeller) Stop() {
 	teller.alive = false
 }
 
+func (teller *GoTeller) IsRunning() {
+	return teller.alive
+}
+
 func (teller *GoTeller) SetInitNeighbors(addrs []string) error {
 	for _, address := range addrs {
 		addr, err := ipaddr.ParseAddrString(address)
