@@ -6,7 +6,7 @@ import (
 )
 
 type QueryMsg struct {
-	MinSpeed    uint32
+	MinSpeed    uint16
 	SearchQuery string
 }
 
@@ -24,14 +24,14 @@ func parseQueryBytes(buffer []byte, query *QueryMsg) error {
 	if len(buffer) <= 3 {
 		return fmt.Errorf("Expected buffer to be of length > 3. Got buffer of length %d", len(buffer))
 	}
-	query.MinSpeed = binary.LittleEndian.Uint32(buffer[:2])
+	query.MinSpeed = binary.LittleEndian.Uint16(buffer[:2])
 
 	nullIdx := findNullByte(buffer[2:])
 	if nullIdx == -1 {
 		return fmt.Errorf("Input buffer didn't have null terminating search query string")
 	}
 	queryBuffer := buffer[:nullIdx]
-	query.SearchQuery = string(queryBuffer)
+	query.SearchQuery = ReadStringLE(queryBuffer)
 	return nil
 }
 
@@ -49,8 +49,8 @@ func (query *QueryMsg) ParseBytes(buffer []byte) error {
 func (query *QueryMsg) ToBytes() []byte {
 	bufferLen := 3 + len(query.SearchQuery) // 2 bytes for MinSpeed, len(query.SearchQuery) bytes for query, 1 bytes for null terminating char
 	buffer := make([]byte, bufferLen)
-	binary.LittleEndian.PutUint32(buffer[:2], query.MinSpeed)
-	copy(buffer[2:], query.SearchQuery)
+	binary.LittleEndian.PutUint16(buffer[:2], query.MinSpeed)
+	WriteStringLE(buffer[2:], query.SearchQuery)
 	buffer[bufferLen-1] = 0x00
 	return buffer
 }

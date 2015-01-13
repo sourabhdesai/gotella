@@ -65,7 +65,7 @@ func (hit *HitResult) ToBytes() []byte {
 	buffer := make([]byte, bufferLen)
 	binary.LittleEndian.PutUint32(buffer[:4], hit.FileIndex)
 	binary.LittleEndian.PutUint32(buffer[4:8], hit.FileSize)
-	WriteStringLE(buffer[:bufferLen-2], hit.Filename)
+	WriteStringLE(buffer[8:bufferLen-2], hit.Filename)
 	buffer[bufferLen-2] = 0x00
 	buffer[bufferLen-1] = 0x00
 	return buffer

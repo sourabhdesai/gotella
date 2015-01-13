@@ -3,10 +3,11 @@ package goteller
 import (
 	"../ipaddr"
 	"../messages"
+	"fmt"
 )
 
 func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.QueryMsg, from ipaddr.IPAddr) {
-	if teller.NetworkSpeed >= query.MinSpeed {
+	if teller.NetworkSpeed >= uint32(query.MinSpeed) {
 		// This node meets speed requirements for query
 		hitResults := teller.queryFunc(query.SearchQuery)
 		if len(hitResults) > 0 {
@@ -30,7 +31,12 @@ func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.Query
 			}
 			headerBuffer := queryHitHeader.ToBytes()
 			msgBuffer := append(headerBuffer, queryHitBuffer...)
-			teller.sendToNeighbor(msgBuffer, from)
+			sent := teller.sendToNeighbor(msgBuffer, from)
+			if !sent {
+				if teller.debugFile != nil {
+					fmt.Fprintln(teller.debugFile, "Couldn't send QueryHitMsg to neighbor at "+from.String())
+				}
+			}
 		}
 	}
 	// Forward query to neighbors if TTL > 0
@@ -45,7 +51,7 @@ func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.Query
 	}
 }
 
-func (teller *GoTeller) sendQuery(searchQuery string, ttl byte, minSpeed uint32, from ipaddr.IPAddr) {
+func (teller *GoTeller) sendQuery(searchQuery string, ttl byte, minSpeed uint16, from ipaddr.IPAddr) {
 	query := messages.QueryMsg{
 		MinSpeed:    minSpeed,
 		SearchQuery: searchQuery,

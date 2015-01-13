@@ -4,15 +4,16 @@ import (
 	"../ipaddr"
 	"bufio"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
-	"strconv"
 )
 
 func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to ipaddr.IPAddr) {
 	endpoint := to.String()
 	path := fmt.Sprintf("/get/%d/%s", fileIndex, filename)
-	req, err := http.NewRequest("GET", endpoint+path, nil)
+	req, err := http.NewRequest("GET", "http://"+endpoint+path, nil)
 	if err != nil {
 		teller.dataFunc(err, fileIndex, filename, nil)
 		return
@@ -36,7 +37,6 @@ func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to ipaddr
 	}
 
 	teller.dataFunc(nil, fileIndex, filename, res)
-
 }
 
 func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
@@ -60,18 +60,38 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 		if teller.debugFile != nil {
 			fmt.Fprintf(teller.debugFile, "Scanned %d out of 2 values in path \"%s\"", n, path)
 		}
+	}
+	if err != nil || n != 2 {
+		res := buildNotFoundResponse(req)
+		res.Write(connIO.Writer)
 	} else {
 		// Valid request
-		bodyBuffer := teller.requestFunc(fileIdx, filename)
-		httpHeader := "HTTP 200 OK\r\nServer: Gnutella\r\nContent-type: application/binary\r\nContent-length: " + strconv.Itoa(len(bodyBuffer)) + "\r\n\r\n"
-		response := append([]byte(httpHeader), bodyBuffer...)
-		err := sendBytes(connIO, response)
-		if err != nil {
-			if teller.debugFile != nil {
-				fmt.Fprintln(teller.debugFile, err)
-			}
-		}
+		bodyReader, length := teller.requestFunc(fileIdx, filename)
+		res := buildResponse("200 OK", 200, bodyReader, length, req)
+		res.Write(connIO.Writer)
 	}
+}
+
+func buildNotFoundResponse(req *http.Request) http.Response {
+	return buildResponse("404 Not Found", 404, nil, 0, req)
+}
+
+func buildResponse(status string, statuscode int, body io.Reader, bodyLen int64, req *http.Request) http.Response {
+	res := http.Response{
+		Status:        status,
+		StatusCode:    statuscode,
+		Proto:         req.Proto,
+		ProtoMajor:    req.ProtoMajor,
+		ProtoMinor:    req.ProtoMinor,
+		ContentLength: bodyLen,
+		Close:         true,
+		Request:       req,
+	}
+	if bodyLen > int64(0) {
+		bodyReadCloser := ioutil.NopCloser(body)
+		res.Body = bodyReadCloser
+	}
+	return res
 }
 
 func respondNotFound(connIO *bufio.ReadWriter) error {

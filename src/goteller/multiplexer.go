@@ -20,14 +20,16 @@ func (teller *GoTeller) startServant() {
 	}
 
 	go teller.startPinger() // Will periodically send pings
-	for teller.alive {
-		conn, err := listener.Accept()
-		if err != nil && teller.debugFile != nil {
-			fmt.Fprintln(teller.debugFile, err) // no worries. just print the error
-		} else {
-			go teller.handleConnection(conn)
+	go func() {
+		for teller.alive {
+			conn, err := listener.Accept()
+			if err != nil && teller.debugFile != nil {
+				fmt.Fprintln(teller.debugFile, err) // no worries. just print the error
+			} else {
+				go teller.handleConnection(conn)
+			}
 		}
-	}
+	}()
 }
 
 func (teller *GoTeller) handleConnection(conn net.Conn) {
@@ -89,7 +91,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			return
 		}
 
-		from, err := ipaddr.ParseAddrString(conn.RemoteAddr().String()) // May need to switch to conn.LocalAddr()
+		from, err := ipaddr.ParseAddrString(conn.LocalAddr().String()) // May need to switch to conn.LocalAddr()
 		if err != nil {
 			if teller.debugFile != nil {
 				fmt.Fprintln(teller.debugFile, err)

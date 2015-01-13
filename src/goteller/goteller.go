@@ -38,7 +38,7 @@ type GoTeller struct {
 	queryFunc      func(string) []messages.HitResult
 	resultFunc     func([]QueryResult, uint32, string) []QueryResult
 	dataFunc       func(error, uint32, string, *http.Response)
-	requestFunc    func(uint32, string) []byte
+	requestFunc    func(uint32, string) (io.Reader, int64)
 }
 
 func (teller *GoTeller) StartAtPort(port uint16) error {
@@ -60,6 +60,10 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 		teller.alive = false
 		return fmt.Errorf("Must set Data callback function (use OnData)")
 	}
+	if teller.requestFunc == nil {
+		teller.alive = false
+		return fmt.Errorf("Must set Request callback function (use OnRequest)")
+	}
 	if len(teller.Neighbors) == 0 {
 		teller.alive = false
 		return fmt.Errorf("Must set initial neighbors (use SetInitNeighbors)")
@@ -73,10 +77,15 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 	if teller.PingInterval == 0 {
 		teller.PingInterval = DEFAULT_PING_INTERVAL
 	}
-
+	teller.savedPings = make(map[[16]byte]ipaddr.IPAddr)
+	teller.savedQueries = make(map[[16]byte]ipaddr.IPAddr)
 	teller.startServant()
 	// TODO: Initialize other things
 	return nil
+}
+
+func (teller *GoTeller) Stop() {
+	teller.alive = false
 }
 
 func (teller *GoTeller) SetInitNeighbors(addrs []string) error {
@@ -112,6 +121,10 @@ func (teller *GoTeller) OnHit(rFunc func([]QueryResult, uint32, string) []QueryR
 
 func (teller *GoTeller) OnData(dFunc func(error, uint32, string, *http.Response)) {
 	teller.dataFunc = dFunc
+}
+
+func (teller *GoTeller) OnRequest(reqFunc func(uint32, string) (io.Reader, int64)) {
+	teller.requestFunc = reqFunc
 }
 
 // send msg to all neighbors except for from
@@ -196,7 +209,7 @@ func (teller *GoTeller) newID() [16]byte {
 	addrBuffer := teller.addr.ToBytes()
 	copy(id[:6], addrBuffer)
 	var numNeighbors uint16 = uint16(len(teller.Neighbors))
-	var randomNum uint32 = uint32(teller.randGen.Int31n(int32(numNeighbors)) + teller.randGen.Int31())
+	var randomNum uint32 = uint32(teller.randGen.Int31n(int32(numNeighbors)+1) + teller.randGen.Int31())
 	binary.LittleEndian.PutUint16(id[6:8], numNeighbors)
 	binary.LittleEndian.PutUint32(id[8:12], teller.hashCount)
 	binary.LittleEndian.PutUint32(id[12:], randomNum)
@@ -204,6 +217,6 @@ func (teller *GoTeller) newID() [16]byte {
 	return id
 }
 
-func (teller *GoTeller) SendQuery(query string, ttl byte, minSpeed uint32) {
+func (teller *GoTeller) SendQuery(query string, ttl byte, minSpeed uint16) {
 	teller.sendQuery(query, ttl, minSpeed, teller.addr)
 }
