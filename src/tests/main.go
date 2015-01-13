@@ -1,7 +1,7 @@
 package main
 
 import (
-	"./goteller"
+	"../goteller"
 	"fmt"
 )
 

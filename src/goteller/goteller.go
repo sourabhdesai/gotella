@@ -19,7 +19,7 @@ const DEFAULT_PING_INTERVAL time.Duration = 3 * time.Second
 
 type GoTeller struct {
 	alive          bool
-	debugFile      *io.Writer
+	debugFile      io.Writer
 	addr           ipaddr.IPAddr
 	Neighbors      []ipaddr.IPAddr
 	NumShared      uint32
@@ -81,16 +81,16 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 
 func (teller *GoTeller) SetInitNeighbors(addrs []string) error {
 	for _, address := range addrs {
-		addr, err := ParseAddrString(address)
+		addr, err := ipaddr.ParseAddrString(address)
 		if err != nil {
 			return err
 		}
-		teller.Neighbors = append(teller.Neighbors, addr)
+		teller.Neighbors = append(teller.Neighbors, *addr)
 	}
 	return nil
 }
 
-func (teller *GoTeller) SetDebugFile(file *io.Writer) {
+func (teller *GoTeller) SetDebugFile(file io.Writer) {
 	teller.debugFile = file
 }
 
@@ -129,7 +129,7 @@ func (teller *GoTeller) sendToNeighbor(msg []byte, to ipaddr.IPAddr) bool {
 	conn, err := net.Dial("tcp", to.String())
 	if err != nil {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 		return false
 	}
@@ -140,14 +140,14 @@ func (teller *GoTeller) sendToNeighbor(msg []byte, to ipaddr.IPAddr) bool {
 	connected, err := gnutellaConnect(connIO)
 	if err != nil {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 		return false
 	}
 	if !connected {
 		err = fmt.Errorf("Didn't receive a valid connect reply")
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 		return false
 	}
@@ -155,7 +155,7 @@ func (teller *GoTeller) sendToNeighbor(msg []byte, to ipaddr.IPAddr) bool {
 	err = sendBytes(connIO, msg) // in requesthandler.go
 	if err != nil {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 		return false
 	}

@@ -19,7 +19,7 @@ func (teller *GoTeller) pingLoop(ttl byte) {
 	defer func() {
 		if r := recover(); r != nil {
 			if teller.debugFile != nil {
-				fmt.Fprintln(*teller.debugFile, r)
+				fmt.Fprintln(teller.debugFile, r)
 			}
 		}
 	}()

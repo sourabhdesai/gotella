@@ -23,7 +23,7 @@ func (teller *GoTeller) startServant() {
 	for teller.alive {
 		conn, err := listener.Accept()
 		if err != nil && teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err) // no worries. just print the error
+			fmt.Fprintln(teller.debugFile, err) // no worries. just print the error
 		} else {
 			go teller.handleConnection(conn)
 		}
@@ -35,7 +35,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 		conn.Close()
 		if r := recover(); r != nil {
 			if teller.debugFile != nil {
-				fmt.Fprintln(*teller.debugFile, "Recovered a Panic in handleConnection: ", r)
+				fmt.Fprintln(teller.debugFile, "Recovered a Panic in handleConnection: ", r)
 			}
 		}
 	}()
@@ -44,12 +44,12 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 	peeked, err := connIO.Reader.Peek(3)                                        // Peek first 3 chars to see if it starts with GET .... indicates a GET request
 	if l := len(peeked); l != 3 {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, "Couldn't peek 3 bytes properly...error:", err)
+			fmt.Fprintln(teller.debugFile, "Couldn't peek 3 bytes properly...error:", err)
 		}
 		return
 	} else if err != nil {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 		return
 	}
@@ -63,7 +63,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 	connected, err := gnutellaReplyToConnect(connIO)
 	if err != nil {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 		return
 	} else if !connected {
@@ -74,17 +74,17 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 	n, err := connIO.Reader.Read(headerBuffer)
 	if n != HEADER_LEN {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, "Wasn't able to read HEADER_LEN bytes")
+			fmt.Fprintln(teller.debugFile, "Wasn't able to read HEADER_LEN bytes")
 		}
 	} else if err != nil {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 	} else {
 		header, err := messages.ParseHeaderBytes(headerBuffer)
 		if err != nil {
 			if teller.debugFile != nil {
-				fmt.Fprintln(*teller.debugFile, err)
+				fmt.Fprintln(teller.debugFile, err)
 			}
 			return
 		}
@@ -92,7 +92,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 		from, err := ipaddr.ParseAddrString(conn.RemoteAddr().String()) // May need to switch to conn.LocalAddr()
 		if err != nil {
 			if teller.debugFile != nil {
-				fmt.Fprintln(*teller.debugFile, err)
+				fmt.Fprintln(teller.debugFile, err)
 			}
 			return
 		}
@@ -102,12 +102,12 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			n, err := connIO.Reader.Read(payloadBuffer)
 			if uint32(n) != header.PayloadLen {
 				if teller.debugFile != nil {
-					fmt.Fprintln(*teller.debugFile, "Couldn't read payloadLen bytes for Pong")
+					fmt.Fprintln(teller.debugFile, "Couldn't read payloadLen bytes for Pong")
 				}
 				return
 			} else if err != nil {
 				if teller.debugFile != nil {
-					fmt.Fprintln(*teller.debugFile, err)
+					fmt.Fprintln(teller.debugFile, err)
 				}
 				return
 			}
@@ -122,7 +122,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 				pong, err := messages.ParsePongBytes(payloadBuffer)
 				if err != nil {
 					if teller.debugFile != nil {
-						fmt.Fprintln(*teller.debugFile, err)
+						fmt.Fprintln(teller.debugFile, err)
 					}
 				} else {
 					teller.onPong(*header, *pong)
@@ -133,7 +133,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 				/*push, err := messages.ParsePushBytes(payloadBuffer)
 				if err != nil {
 					if teller.debugFile != nil {
-						fmt.Fprintln(*teller.debugFile, err)
+						fmt.Fprintln(teller.debugFile, err)
 					}
 				} else {
 					// TODO: Create push handler
@@ -144,7 +144,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 				query, err := messages.ParseQueryBytes(payloadBuffer)
 				if err != nil {
 					if teller.debugFile != nil {
-						fmt.Fprintln(*teller.debugFile, err)
+						fmt.Fprintln(teller.debugFile, err)
 					}
 				} else {
 					teller.onQuery(*header, *query, *from)
@@ -155,7 +155,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 				queryhit, err := messages.ParseQueryHitBytes(payloadBuffer)
 				if err != nil {
 					if teller.debugFile != nil {
-						fmt.Fprintln(*teller.debugFile, err)
+						fmt.Fprintln(teller.debugFile, err)
 					}
 				} else {
 					teller.onQueryHit(*header, *queryhit)

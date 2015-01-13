@@ -43,7 +43,7 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 	req, err := http.ReadRequest(connIO.Reader)
 	if err != nil {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 		return
 	}
@@ -54,11 +54,11 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 	n, err := fmt.Sscanf(path, "get/%d/%s", &fileIdx, &filename)
 	if err != nil {
 		if teller.debugFile != nil {
-			fmt.Fprintln(*teller.debugFile, err)
+			fmt.Fprintln(teller.debugFile, err)
 		}
 	} else if n != 2 {
 		if teller.debugFile != nil {
-			fmt.Fprintf(*teller.debugFile, "Scanned %d out of 2 values in path \"%s\"", n, path)
+			fmt.Fprintf(teller.debugFile, "Scanned %d out of 2 values in path \"%s\"", n, path)
 		}
 	} else {
 		// Valid request
@@ -68,7 +68,7 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 		err := sendBytes(connIO, response)
 		if err != nil {
 			if teller.debugFile != nil {
-				fmt.Fprintln(*teller.debugFile, err)
+				fmt.Fprintln(teller.debugFile, err)
 			}
 		}
 	}
