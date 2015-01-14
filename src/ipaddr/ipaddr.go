@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 type IPAddr struct {
@@ -13,19 +14,31 @@ type IPAddr struct {
 
 // Takes strings of format "a.b.c.d:p" and returns equivalent IPAddr struct
 func parseString(addr string, ipAddr *IPAddr) error {
-	n, err := fmt.Sscanf(addr, "%d.%d.%d.%d:%d",
-		&ipAddr.IP[0],
-		&ipAddr.IP[1],
-		&ipAddr.IP[2],
-		&ipAddr.IP[3],
-		&ipAddr.Port)
-	if err != nil {
-		return err
+	if strings.HasPrefix(addr, "localhost:") { // Can parse address string in format localhost:port
+		n, err := fmt.Sscanf(addr, "localhost:%d", &ipAddr.Port)
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return fmt.Errorf("Input string \"%s\" wasn't correct format", addr)
+		}
+		err = ipAddr.SetToLocalIP()
+		return err // could be nil
+	} else {
+		n, err := fmt.Sscanf(addr, "%d.%d.%d.%d:%d",
+			&ipAddr.IP[0],
+			&ipAddr.IP[1],
+			&ipAddr.IP[2],
+			&ipAddr.IP[3],
+			&ipAddr.Port)
+		if err != nil {
+			return err
+		}
+		if n != 5 {
+			return fmt.Errorf("Input string \"%s\" wasn't correct format", addr)
+		}
+		return nil
 	}
-	if n != 5 {
-		return fmt.Errorf("Input string \"%s\" wasn't correct format", addr)
-	}
-	return nil
 }
 
 func ParseAddrString(addr string) (*IPAddr, error) {

@@ -88,7 +88,7 @@ func (teller *GoTeller) Stop() {
 	teller.alive = false
 }
 
-func (teller *GoTeller) IsRunning() {
+func (teller *GoTeller) IsRunning() bool {
 	return teller.alive
 }
 
@@ -143,6 +143,9 @@ func (teller *GoTeller) floodToNeighbors(msg []byte, from ipaddr.IPAddr) {
 }
 
 func (teller *GoTeller) sendToNeighbor(msg []byte, to ipaddr.IPAddr) bool {
+	if to == teller.addr {
+		fmt.Println("Sending to self; Length =", len(msg))
+	}
 	conn, err := net.Dial("tcp", to.String())
 	if err != nil {
 		if teller.debugFile != nil {

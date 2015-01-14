@@ -7,6 +7,20 @@ import (
 )
 
 func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.QueryMsg, from ipaddr.IPAddr) {
+	if from == teller.addr {
+		fmt.Println("Received query from self")
+	} else {
+		fmt.Println("Received query from", from)
+	}
+	// First check if we've seen this query before
+	teller.queryMapMutex.RLock()
+	if _, seen := teller.savedQueries[header.DescID]; seen {
+		teller.queryMapMutex.RUnlock()
+		return // No need to do anything further. Just drop it
+	} else { // Haven't seen it.
+		teller.queryMapMutex.RUnlock()
+	}
+
 	if teller.NetworkSpeed >= uint32(query.MinSpeed) {
 		// This node meets speed requirements for query
 		hitResults := teller.queryFunc(query.SearchQuery)
@@ -31,7 +45,7 @@ func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.Query
 			}
 			headerBuffer := queryHitHeader.ToBytes()
 			msgBuffer := append(headerBuffer, queryHitBuffer...)
-			sent := teller.sendToNeighbor(msgBuffer, from)
+			sent := teller.sendToNeighbor(msgBuffer, from) // Send hit to neighbor
 			if !sent {
 				if teller.debugFile != nil {
 					fmt.Fprintln(teller.debugFile, "Couldn't send QueryHitMsg to neighbor at "+from.String())
@@ -48,6 +62,8 @@ func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.Query
 		teller.savedQueries[header.DescID] = from // Save to savedQueries map
 		teller.queryMapMutex.Unlock()
 		teller.floodToNeighbors(msgBuffer, from)
+	} else {
+		teller.queryMapMutex.RUnlock()
 	}
 }
 

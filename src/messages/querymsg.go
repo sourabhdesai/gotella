@@ -26,12 +26,12 @@ func parseQueryBytes(buffer []byte, query *QueryMsg) error {
 	}
 	query.MinSpeed = binary.LittleEndian.Uint16(buffer[:2])
 
-	nullIdx := findNullByte(buffer[2:])
+	queryBuffer := buffer[2:]
+	nullIdx := findNullByte(queryBuffer)
 	if nullIdx == -1 {
 		return fmt.Errorf("Input buffer didn't have null terminating search query string")
 	}
-	queryBuffer := buffer[:nullIdx]
-	query.SearchQuery = ReadStringLE(queryBuffer)
+	query.SearchQuery = ReadStringLE(queryBuffer[:nullIdx]) // cut off null byte
 	return nil
 }
 
@@ -47,7 +47,7 @@ func (query *QueryMsg) ParseBytes(buffer []byte) error {
 }
 
 func (query *QueryMsg) ToBytes() []byte {
-	bufferLen := 3 + len(query.SearchQuery) // 2 bytes for MinSpeed, len(query.SearchQuery) bytes for query, 1 bytes for null terminating char
+	bufferLen := 3 + len(query.SearchQuery) // 2 bytes for MinSpeed, len(query.SearchQuery) bytes for query, 1 byte for null terminating char
 	buffer := make([]byte, bufferLen)
 	binary.LittleEndian.PutUint16(buffer[:2], query.MinSpeed)
 	WriteStringLE(buffer[2:], query.SearchQuery)

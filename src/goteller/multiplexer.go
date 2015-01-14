@@ -91,6 +91,7 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			return
 		}
 
+		fmt.Println("conn.LocalAddr().String() =", conn.LocalAddr().String())
 		from, err := ipaddr.ParseAddrString(conn.LocalAddr().String()) // May need to switch to conn.LocalAddr()
 		if err != nil {
 			if teller.debugFile != nil {
@@ -104,7 +105,10 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			n, err := connIO.Reader.Read(payloadBuffer)
 			if uint32(n) != header.PayloadLen {
 				if teller.debugFile != nil {
-					fmt.Fprintln(teller.debugFile, "Couldn't read payloadLen bytes for Pong")
+					fmt.Fprintf(teller.debugFile, "Couldn't read payloadLen bytes for %#x... read %d/%d bytes\n", header.PayloadDesc, n, header.PayloadLen)
+					if err != nil {
+						fmt.Fprintln(teller.debugFile, err)
+					}
 				}
 				return
 			} else if err != nil {
@@ -143,6 +147,8 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			}
 		case messages.QUERY:
 			{
+				fmt.Println("Me:", teller.addr, "Other guy:", from)
+				fmt.Println("Neighbors:", teller.Neighbors)
 				query, err := messages.ParseQueryBytes(payloadBuffer)
 				if err != nil {
 					if teller.debugFile != nil {
@@ -154,6 +160,8 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			}
 		case messages.QUERYHIT:
 			{
+				fmt.Println("Me:", teller.addr, "Other guy:", from)
+				fmt.Println("Neighbors:", teller.Neighbors)
 				queryhit, err := messages.ParseQueryHitBytes(payloadBuffer)
 				if err != nil {
 					if teller.debugFile != nil {

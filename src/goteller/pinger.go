@@ -34,6 +34,11 @@ func (teller *GoTeller) pingLoop(ttl byte) {
 		Hops:        0,
 		PayloadLen:  0x0000000000,
 	}
+	// Save this ping in the map as being sourced from this node
+	teller.pingMapMutex.Lock()
+	teller.savedPings[header.DescID] = teller.addr
+	teller.pingMapMutex.Unlock()
+
 	pingBuffer := header.ToBytes()
 	teller.neighborsMutex.RLock()
 	rlocked := true

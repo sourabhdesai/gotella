@@ -21,9 +21,9 @@ func (teller *GoTeller) onPing(descHeader messages.DescHeader, from ipaddr.IPAdd
 	descHeader.TTL--
 	descHeader.Hops++
 	if descHeader.TTL > 0 {
-		teller.floodToNeighbors(descHeader.ToBytes(), from)
 		teller.pingMapMutex.Lock()
 		teller.savedPings[descHeader.DescID] = from // Save in saved Pings
 		teller.pingMapMutex.Unlock()
+		teller.floodToNeighbors(descHeader.ToBytes(), from)
 	}
 }
