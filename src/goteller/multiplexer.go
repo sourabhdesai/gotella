@@ -13,14 +13,18 @@ const HEADER_LEN int = 23
 const CONNECTOR string = "GNUTELLA CONNECT/0.4\n\n"
 const REPLY string = "GNUTELLA OK\n\n"
 
-func (teller *GoTeller) startServant() {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", teller.addr.Port))
-	if err != nil { // If error, just panic. Node will not work if Listen fails
-		panic(err.Error())
+func (teller *GoTeller) startServant() error {
+	tcpAddr, err := net.ResolveTCPAddr("tcp", teller.addr.String())
+	if err != nil {
+		return err
 	}
-
-	go teller.startPinger() // Will periodically send pings
-	go func() {             // Wait for incoming connections
+	listener, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil { // If error, just panic. Node will not work if Listen fails
+		return err
+	}
+	//go teller.startPinger() // Will periodically send pings
+	go func() { // Wait for incoming connections
+		defer listener.Close()
 		for teller.alive {
 			conn, err := listener.Accept()
 			if err != nil && teller.debugFile != nil {
@@ -30,6 +34,7 @@ func (teller *GoTeller) startServant() {
 			}
 		}
 	}()
+	return nil
 }
 
 func (teller *GoTeller) handleConnection(conn net.Conn) {
@@ -92,7 +97,8 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 		}
 
 		fmt.Println("conn.LocalAddr().String() =", conn.LocalAddr().String())
-		from, err := ipaddr.ParseAddrString(conn.LocalAddr().String()) // May need to switch to conn.LocalAddr()
+		fmt.Println("conn.RemoteAddr().String() =", conn.RemoteAddr().String())
+		from, err := ipaddr.ParseAddrString(conn.RemoteAddr().String()) // May need to switch to conn.LocalAddr()
 		if err != nil {
 			if teller.debugFile != nil {
 				fmt.Fprintln(teller.debugFile, err)

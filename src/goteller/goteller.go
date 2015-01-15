@@ -79,8 +79,10 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 	}
 	teller.savedPings = make(map[[16]byte]ipaddr.IPAddr)
 	teller.savedQueries = make(map[[16]byte]ipaddr.IPAddr)
-	teller.startServant()
-	// TODO: Initialize other things
+	err = teller.startServant()
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

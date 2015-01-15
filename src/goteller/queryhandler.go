@@ -9,6 +9,7 @@ import (
 func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.QueryMsg, from ipaddr.IPAddr) {
 	if from == teller.addr {
 		fmt.Println("Received query from self")
+		return
 	} else {
 		fmt.Println("Received query from", from)
 	}

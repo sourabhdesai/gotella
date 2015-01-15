@@ -2,14 +2,13 @@ package goteller
 
 import (
 	"../messages"
-	"fmt"
 )
 
 func (teller *GoTeller) onQueryHit(header messages.DescHeader, queryHit messages.QueryHitMsg) {
 	teller.queryMapMutex.RLock()
-	if addr, ok := teller.savedQueries[header.DescID]; ok {
+	if querySrc, ok := teller.savedQueries[header.DescID]; ok {
 		teller.queryMapMutex.RUnlock()
-		if addr == teller.addr {
+		if querySrc == teller.addr {
 			// Query was from this node
 			results := resultsFromHit(queryHit)
 			chosenResults := teller.resultFunc(results, queryHit.Speed, string(queryHit.ServantID[:]))
@@ -20,13 +19,9 @@ func (teller *GoTeller) onQueryHit(header messages.DescHeader, queryHit messages
 			header.TTL--
 			header.Hops++
 			msgBuffer := append(header.ToBytes(), queryHit.ToBytes()...)
-			//teller.queryMapMutex.Lock()
-			//delete(teller.savedQueries, header.DescID) // remove entry
-			//teller.queryMapMutex.Unlock()
-			teller.sendToNeighbor(msgBuffer, addr)
+			teller.sendToNeighbor(msgBuffer, querySrc)
 		}
 	} else {
-		fmt.Println("Seen before")
 		teller.queryMapMutex.RUnlock()
 	}
 }
