@@ -121,7 +121,7 @@ If the error parameter is not `nil`, the res pointer will be. The same is true v
 		    fmt.Println(err)
 		    return
 	    }
-	    if res.Status != 200 {
+	    if res.StatusCode != 200 {
 		    // Probably got a 404 response!
 		    fmt.Printf("Got response status code %d for file \"%s\"\n", res.Status, filename)
 		    return

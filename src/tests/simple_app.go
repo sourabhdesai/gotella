@@ -92,7 +92,7 @@ func OnResponse(err error, fileindex uint32, filename string, res *http.Response
 		return
 	}
 
-	if res.Status != 200 {
+	if res.StatusCode != 200 {
 		fmt.Printf("Got response status code %d for file \"%s\"", res.Status, filename)
 		return
 	}
