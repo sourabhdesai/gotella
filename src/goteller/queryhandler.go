@@ -30,7 +30,7 @@ func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.Query
 				NumHits:   byte(len(hitResults)),
 				Addr:      teller.addr,
 				Speed:     teller.NetworkSpeed,
-				ResultSet: hitResults,
+				ResultSet: []messages.HitResult(hitResults),
 				ServantID: id,
 			}
 			queryHitBuffer := queryHit.ToBytes()
@@ -65,7 +65,7 @@ func (teller *GoTeller) onQuery(header messages.DescHeader, query messages.Query
 	}
 }
 
-func (teller *GoTeller) sendQuery(searchQuery string, ttl byte, minSpeed uint16, from ipaddr.IPAddr) {
+func (teller *GoTeller) sendQuery(searchQuery string, ttl byte, minSpeed uint16, from ipaddr.IPAddr) [16]byte {
 	query := messages.QueryMsg{
 		MinSpeed:    minSpeed,
 		SearchQuery: searchQuery,
@@ -80,8 +80,11 @@ func (teller *GoTeller) sendQuery(searchQuery string, ttl byte, minSpeed uint16,
 	}
 	headerBuffer := header.ToBytes()
 	msgBuffer := append(headerBuffer, queryBuffer...)
-	teller.queryMapMutex.Lock()
-	teller.savedQueries[header.DescID] = from // Save to savedQueries map
-	teller.queryMapMutex.Unlock()
+	if from != teller.addr {
+		teller.queryMapMutex.Lock()
+		teller.savedQueries[header.DescID] = from // Save to savedQueries map
+		teller.queryMapMutex.Unlock()
+	}
 	teller.floodToNeighbors(msgBuffer, from)
+	return header.DescID
 }

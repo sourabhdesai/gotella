@@ -5,8 +5,6 @@ import (
 	"../messages"
 )
 
-type HitResult messages.HitResult
-
 type QueryResult struct {
 	fileIndex uint32
 	fileSize  uint32

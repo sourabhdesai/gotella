@@ -9,36 +9,37 @@ import (
 	"io"
 	"math/rand"
 	"net"
-	"net/http"
 	"sync"
 	"time"
 )
 
-const SEED int64 = 7187
+const SEED int64 = 7187 // A large prime number
 const DEFAULT_PING_INTERVAL time.Duration = 3 * time.Second
 
+type HitResult messages.HitResult
+
 type GoTeller struct {
-	alive          bool
-	debugFile      io.Writer
-	addr           ipaddr.IPAddr
-	Neighbors      []ipaddr.IPAddr
-	NumShared      uint32
-	NumKB          uint32
-	Port           uint16
-	NetworkSpeed   uint32
-	PingInterval   time.Duration
-	hashCount      uint32
-	servantID      string
-	randGen        *rand.Rand
-	savedPings     map[[16]byte]ipaddr.IPAddr
-	savedQueries   map[[16]byte]ipaddr.IPAddr
-	neighborsMutex sync.RWMutex
-	pingMapMutex   sync.RWMutex
-	queryMapMutex  sync.RWMutex
-	queryFunc      func(string) []messages.HitResult
-	resultFunc     func([]QueryResult, uint32, string) []QueryResult
-	dataFunc       func(error, uint32, string, *http.Response)
-	requestFunc    func(uint32, string) (io.ReadCloser, int64)
+	alive           bool
+	debugFile       io.Writer
+	addr            ipaddr.IPAddr
+	Neighbors       []ipaddr.IPAddr
+	NumShared       uint32
+	NumKB           uint32
+	Port            uint16
+	NetworkSpeed    uint32
+	PingInterval    time.Duration
+	hashCount       uint32
+	servantID       string
+	randGen         *rand.Rand
+	savedPings      map[[16]byte]ipaddr.IPAddr
+	savedQueries    map[[16]byte]ipaddr.IPAddr
+	myQueries       map[[16]byte]Query
+	neighborsMutex  sync.RWMutex
+	pingMapMutex    sync.RWMutex
+	queryMapMutex   sync.RWMutex
+	myQueryMapMutex sync.RWMutex
+	queryFunc       func(string) []messages.HitResult
+	requestFunc     func(uint32, string) (io.ReadCloser, int64)
 }
 
 func (teller *GoTeller) StartAtPort(port uint16) error {
@@ -51,14 +52,6 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 	if teller.queryFunc == nil {
 		teller.alive = false
 		return fmt.Errorf("Must set Query callback function (use OnQuery)")
-	}
-	if teller.resultFunc == nil {
-		teller.alive = false
-		return fmt.Errorf("Must set Hit callback function (use OnHit)")
-	}
-	if teller.dataFunc == nil {
-		teller.alive = false
-		return fmt.Errorf("Must set Data callback function (use OnData)")
 	}
 	if teller.requestFunc == nil {
 		teller.alive = false
@@ -79,6 +72,7 @@ func (teller *GoTeller) StartAtPort(port uint16) error {
 	}
 	teller.savedPings = make(map[[16]byte]ipaddr.IPAddr)
 	teller.savedQueries = make(map[[16]byte]ipaddr.IPAddr)
+	teller.myQueries = make(map[[16]byte]Query)
 	err = teller.startServant()
 	if err != nil {
 		return err
@@ -121,14 +115,6 @@ func (teller *GoTeller) OnQuery(qFunc func(string) []messages.HitResult) {
 	teller.queryFunc = qFunc
 }
 
-func (teller *GoTeller) OnHit(rFunc func([]QueryResult, uint32, string) []QueryResult) {
-	teller.resultFunc = rFunc
-}
-
-func (teller *GoTeller) OnData(dFunc func(error, uint32, string, *http.Response)) {
-	teller.dataFunc = dFunc
-}
-
 func (teller *GoTeller) OnRequest(reqFunc func(uint32, string) (io.ReadCloser, int64)) {
 	teller.requestFunc = reqFunc
 }
@@ -145,11 +131,6 @@ func (teller *GoTeller) floodToNeighbors(msg []byte, from ipaddr.IPAddr) {
 }
 
 func (teller *GoTeller) sendToNeighbor(msg []byte, to ipaddr.IPAddr) bool {
-	to, ok := teller.neighborWithSameIP(to)
-	if !ok {
-		return false
-	}
-
 	conn, err := net.Dial("tcp", to.String())
 	if err != nil {
 		if teller.debugFile != nil {
@@ -239,6 +220,29 @@ func (teller *GoTeller) newID() [16]byte {
 	return id
 }
 
-func (teller *GoTeller) SendQuery(query string, ttl byte, minSpeed uint16) {
-	teller.sendQuery(query, ttl, minSpeed, teller.addr)
+func (teller *GoTeller) SendQuery(query Query) error {
+	defer func() {
+		if r := recover(); r != nil {
+			if teller.debugFile != nil {
+				fmt.Fprintln(teller.debugFile, r)
+			}
+		}
+	}()
+	// First check if both callbacks have been set
+	if query.onHit == nil && query.onResponse != nil {
+		return fmt.Errorf("Must set OnHit callback for query (Use OnHit(callback))")
+	} else if query.onResponse == nil && query.onHit != nil {
+		return fmt.Errorf("Must set OnResponse callback for query (Use OnResponse(callback))")
+	} else if query.onResponse == nil && query.onHit == nil {
+		return fmt.Errorf("Must set OnHit and OnResponse callbacks for query (Use OnHit(callback) & OnResponse(callback))")
+	}
+	if query.TTL == 0 {
+		return fmt.Errorf("TTL on query for \"%s\" was 0. Query TTL must be greater than 0.", query.SearchQuery)
+	}
+	// Save query into myQueries map
+	descID := teller.sendQuery(query.SearchQuery, query.TTL, query.MinSpeed, teller.addr)
+	teller.myQueryMapMutex.Lock()
+	defer teller.myQueryMapMutex.Unlock()
+	teller.myQueries[descID] = query
+	return nil
 }

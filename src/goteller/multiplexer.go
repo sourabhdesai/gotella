@@ -22,8 +22,8 @@ func (teller *GoTeller) startServant() error {
 	if err != nil { // If error, just panic. Node will not work if Listen fails
 		return err
 	}
-	//go teller.startPinger() // Will periodically send pings
-	go func() { // Wait for incoming connections
+	go teller.startPinger() // Will periodically send pings
+	go func() {             // Wait for incoming connections
 		defer listener.Close()
 		for teller.alive {
 			conn, err := listener.Accept()
@@ -96,12 +96,16 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			return
 		}
 
-		from, err := ipaddr.ParseAddrString(conn.RemoteAddr().String()) // May need to switch to conn.LocalAddr()
+		from, err := ipaddr.ParseAddrString(conn.RemoteAddr().String())
 		if err != nil {
 			if teller.debugFile != nil {
 				fmt.Fprintln(teller.debugFile, err)
 			}
 			return
+		}
+		neighborFrom, ok := teller.neighborWithSameIP(*from)
+		if ok {
+			*from = neighborFrom
 		}
 
 		payloadBuffer := make([]byte, header.PayloadLen)

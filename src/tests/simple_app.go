@@ -36,8 +36,6 @@ func main() {
 	}
 	teller.SetDebugFile(os.Stderr)
 	teller.OnQuery(OnQuery)
-	teller.OnHit(OnHit)
-	teller.OnData(OnData)
 	teller.OnRequest(OnRequest)
 
 	err = teller.StartAtPort(uint16(port))
@@ -51,8 +49,19 @@ func main() {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Println("Type Query:")
-		query, _ := reader.ReadString('\n')
-		teller.SendQuery(query[:len(query)-1], 1, 0) // ttl = 2; minspeed = 0 KB/s
+		queryTerm, _ := reader.ReadString('\n')
+		queryTerm = queryTerm[:len(queryTerm)-1] // Chop off newline at the end
+		query := goteller.Query{
+			TTL:         1,
+			MinSpeed:    0,
+			SearchQuery: queryTerm,
+		}
+		query.OnHit(OnHit)
+		query.OnResponse(OnResponse)
+		err = teller.SendQuery(query)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 
@@ -67,7 +76,7 @@ func OnQuery(query string) []messages.HitResult {
 	}
 }
 
-func OnHit(hits []goteller.QueryResult, fileidx uint32, servantID string) []goteller.QueryResult {
+func OnHit(hits []goteller.QueryResult, servantSpeed uint32, servantID string) []goteller.QueryResult {
 	fmt.Println("Received Query Hits")
 	for i, result := range hits {
 		fmt.Printf("%d: %+v\n", i, result)
@@ -75,11 +84,16 @@ func OnHit(hits []goteller.QueryResult, fileidx uint32, servantID string) []gote
 	return hits[0:1]
 }
 
-func OnData(err error, fileindex uint32, filename string, res *http.Response) {
+func OnResponse(err error, fileindex uint32, filename string, res *http.Response) {
 	fmt.Println("Received Response from Data Request")
 	fmt.Printf("fileindex: %d; filename: %s\n", fileindex, filename)
 	if err != nil {
 		fmt.Println("Received Error in OnData:", err)
+		return
+	}
+
+	if res.Status != 200 {
+		fmt.Printf("Got response status code %d for file \"%s\"", res.Status, filename)
 		return
 	}
 

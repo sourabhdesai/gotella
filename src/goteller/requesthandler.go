@@ -9,33 +9,33 @@ import (
 	"net/http"
 )
 
-func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to ipaddr.IPAddr) {
+func (teller *GoTeller) sendRequest(fileIndex uint32, filename string, to ipaddr.IPAddr, onResponse func(error, uint32, string, *http.Response)) {
 	endpoint := to.String()
 	path := fmt.Sprintf("/get/%d/%s", fileIndex, filename)
 	req, err := http.NewRequest("GET", "http://"+endpoint+path, nil)
 	if err != nil {
-		teller.dataFunc(err, fileIndex, filename, nil)
+		onResponse(err, fileIndex, filename, nil)
 		return
 	}
 	conn, err := net.Dial("tcp", endpoint)
 	if err != nil {
-		teller.dataFunc(err, fileIndex, filename, nil)
+		onResponse(err, fileIndex, filename, nil)
 		return
 	}
 	err = req.Write(conn)
 	if err != nil {
-		teller.dataFunc(err, fileIndex, filename, nil)
+		onResponse(err, fileIndex, filename, nil)
 		return
 	}
 
 	connReader := bufio.NewReader(conn)
 	res, err := http.ReadResponse(connReader, req)
 	if err != nil {
-		teller.dataFunc(err, fileIndex, filename, nil)
+		onResponse(err, fileIndex, filename, nil)
 		return
 	}
 
-	teller.dataFunc(nil, fileIndex, filename, res)
+	onResponse(nil, fileIndex, filename, res)
 }
 
 func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
@@ -72,12 +72,23 @@ func (teller *GoTeller) handleRequest(connIO *bufio.ReadWriter) {
 	} else {
 		// Valid request
 		bodyReader, length := teller.requestFunc(fileIdx, filename)
-		res := buildResponse("200 OK", 200, bodyReader, length, req)
-		res.Write(connIO.Writer)
-		err = connIO.Writer.Flush()
-		if err != nil {
-			if teller.debugFile != nil {
-				fmt.Fprintln(teller.debugFile, err)
+		if length < 0 {
+			res := buildNotFoundResponse(req)
+			res.Write(connIO.Writer)
+			err = connIO.Writer.Flush()
+			if err != nil {
+				if teller.debugFile != nil {
+					fmt.Fprintln(teller.debugFile, err)
+				}
+			}
+		} else {
+			res := buildResponse("200 OK", 200, bodyReader, length, req)
+			res.Write(connIO.Writer)
+			err = connIO.Writer.Flush()
+			if err != nil {
+				if teller.debugFile != nil {
+					fmt.Fprintln(teller.debugFile, err)
+				}
 			}
 		}
 	}
