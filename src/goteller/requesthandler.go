@@ -104,12 +104,6 @@ func buildResponse(status string, statuscode int, body io.ReadCloser, bodyLen in
 	return res
 }
 
-func respondNotFound(connIO *bufio.ReadWriter) error {
-	responseString := "HTTP/1.0 404 Not Found"
-	err := sendBytes(connIO, []byte(responseString))
-	return err
-}
-
 func sendBytes(connIO *bufio.ReadWriter, buffer []byte) error {
 	_, err := connIO.Writer.Write(buffer)
 	if err != nil {

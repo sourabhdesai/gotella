@@ -96,8 +96,6 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			return
 		}
 
-		fmt.Println("conn.LocalAddr().String() =", conn.LocalAddr().String())
-		fmt.Println("conn.RemoteAddr().String() =", conn.RemoteAddr().String())
 		from, err := ipaddr.ParseAddrString(conn.RemoteAddr().String()) // May need to switch to conn.LocalAddr()
 		if err != nil {
 			if teller.debugFile != nil {
@@ -153,8 +151,6 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			}
 		case messages.QUERY:
 			{
-				fmt.Println("Me:", teller.addr, "Other guy:", from)
-				fmt.Println("Neighbors:", teller.Neighbors)
 				query, err := messages.ParseQueryBytes(payloadBuffer)
 				if err != nil {
 					if teller.debugFile != nil {
@@ -166,8 +162,6 @@ func (teller *GoTeller) handleConnection(conn net.Conn) {
 			}
 		case messages.QUERYHIT:
 			{
-				fmt.Println("Me:", teller.addr, "Other guy:", from)
-				fmt.Println("Neighbors:", teller.Neighbors)
 				queryhit, err := messages.ParseQueryHitBytes(payloadBuffer)
 				if err != nil {
 					if teller.debugFile != nil {

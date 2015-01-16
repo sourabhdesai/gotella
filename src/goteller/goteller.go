@@ -145,9 +145,11 @@ func (teller *GoTeller) floodToNeighbors(msg []byte, from ipaddr.IPAddr) {
 }
 
 func (teller *GoTeller) sendToNeighbor(msg []byte, to ipaddr.IPAddr) bool {
-	if to == teller.addr {
-		fmt.Println("Sending to self; Length =", len(msg))
+	to, ok := teller.neighborWithSameIP(to)
+	if !ok {
+		return false
 	}
+
 	conn, err := net.Dial("tcp", to.String())
 	if err != nil {
 		if teller.debugFile != nil {
@@ -194,6 +196,17 @@ func (teller *GoTeller) isNeighbor(from ipaddr.IPAddr) bool {
 		}
 	}
 	return false
+}
+
+func (teller *GoTeller) neighborWithSameIP(addr ipaddr.IPAddr) (ipaddr.IPAddr, bool) {
+	teller.neighborsMutex.RLock()
+	defer teller.neighborsMutex.RUnlock()
+	for _, neighbor := range teller.Neighbors {
+		if neighbor.IP == addr.IP {
+			return neighbor, true
+		}
+	}
+	return ipaddr.IPAddr{}, false
 }
 
 func (teller *GoTeller) addNeighbor(newNode ipaddr.IPAddr) {
